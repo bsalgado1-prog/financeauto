@@ -235,12 +235,12 @@ export default function App() {
   const abasMenu = ["lista","vencimentos","cobranca","quitados","relatorio"];
 
   return (
-    <div style={{minHeight:"100vh",background:"#0d0f18",color:"#e2e8f0",fontFamily:"'DM Sans',sans-serif"}}>
+    <div style={{minHeight:"100vh",background:"#e8f0fe",color:"#1a2a4a",fontFamily:"'DM Sans',sans-serif"}}>
       {/* HEADER */}
-      <header style={{background:"#111320",borderBottom:"1px solid #1e2235",padding:"0 14px",display:"flex",alignItems:"center",justifyContent:"space-between",height:52}}>
+      <header style={{background:"#ffffff",borderBottom:"1px solid #b8cef5",padding:"0 14px",display:"flex",alignItems:"center",justifyContent:"space-between",height:52}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <div style={{width:30,height:30,borderRadius:8,background:"linear-gradient(135deg,#f59e0b,#ef4444)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>💰</div>
-          <div style={{fontWeight:800,fontSize:14}}>FinanceAuto</div>
+          <div style={{fontWeight:800,fontSize:14,color:"#ffffff"}}>FinanceAuto</div>
         </div>
         <div style={{display:"flex",gap:6}}>
           {aba==="detalhe" && step===3 && <button onClick={voltarParaCliente} style={btnSec}>← Operações</button>}
@@ -251,9 +251,9 @@ export default function App() {
       </header>
 
       {abasMenu.includes(aba) && (
-        <div style={{display:"flex",borderBottom:"1px solid #1e2235",background:"#111320"}}>
+        <div style={{display:"flex",borderBottom:"1px solid #b8cef5",background:"#ffffff"}}>
           {abas.map(([id,label])=>(
-            <button key={id} onClick={()=>setAba(id)} style={{flex:1,padding:"10px 4px",background:"none",border:"none",borderBottom:aba===id?"2px solid #f59e0b":"2px solid transparent",color:aba===id?"#f59e0b":"#64748b",fontWeight:aba===id?700:500,fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>{label}</button>
+            <button key={id} onClick={()=>setAba(id)} style={{flex:1,padding:"10px 4px",background:"none",border:"none",borderBottom:aba===id?"2px solid #1a56db":"2px solid transparent",color:aba===id?"#1a56db":"#5a7090",fontWeight:aba===id?700:500,fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>{label}</button>
           ))}
         </div>
       )}
@@ -268,10 +268,10 @@ export default function App() {
             <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"center"}}>
               <input placeholder="🔍 Nome ou CPF..." value={busca} onChange={e=>setBusca(e.target.value)} style={{...inp,flex:1}}/>
               <button onClick={carregar} style={{...btnSec,padding:"8px 12px"}}>↻</button>
-              <span style={{color:"#475569",fontSize:12}}>{clientes.length}</span>
+              <span style={{color:"#6a80a0",fontSize:12}}>{clientes.length}</span>
             </div>
-            {loading?<div style={{textAlign:"center",padding:"60px 0",color:"#475569"}}>Carregando...</div>
-            :filtrados.length===0?<div style={{textAlign:"center",padding:"60px 0",color:"#334155"}}><div style={{fontSize:40,marginBottom:10}}>📋</div><div>Nenhum cliente</div></div>
+            {loading?<div style={{textAlign:"center",padding:"60px 0",color:"#6a80a0"}}>Carregando...</div>
+            :filtrados.length===0?<div style={{textAlign:"center",padding:"60px 0",color:"#7a90b0"}}><div style={{fontSize:40,marginBottom:10}}>📋</div><div>Nenhum cliente</div></div>
             :<div style={{display:"flex",flexDirection:"column",gap:8}}>
               {filtrados.map(c=>{
                 const emps=empsDoCliente(c.id);
@@ -279,11 +279,11 @@ export default function App() {
                 const saldo=totalSaldo(c.id);
                 const temAlerta=ativos.some(e=>["hoje","atrasado","proximo"].includes(statusVenc(e.dia_venc,e.historico)));
                 return(
-                  <div key={c.id} onClick={()=>abrirCliente(c)} style={{background:"#111320",border:"1px solid #1e2235",borderRadius:12,padding:14,cursor:"pointer"}}>
+                  <div key={c.id} onClick={()=>abrirCliente(c)} style={{background:"#ffffff",border:"1px solid #b8cef5",borderRadius:12,padding:14,cursor:"pointer"}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
                       <div>
                         <div style={{fontWeight:700,fontSize:15}}>{c.nome}</div>
-                        <div style={{color:"#64748b",fontSize:12}}>{c.telefone}</div>
+                        <div style={{color:"#5a7090",fontSize:12}}>{c.telefone}</div>
                         {c.ref1_nome&&<div style={{color:"#f59e0b",fontSize:11,marginTop:2}}>📞 {c.ref1_nome} · {c.ref1_tel}</div>}
                       </div>
                       <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3}}>
@@ -313,18 +313,18 @@ export default function App() {
         {aba==="vencimentos" && (
           <div>
             <div style={{fontWeight:700,fontSize:15,marginBottom:14}}>📅 Operações por Vencimento</div>
-            {opsVenc.length===0?<div style={{textAlign:"center",padding:"60px 0",color:"#334155"}}>Nenhuma operação ativa</div>
+            {opsVenc.length===0?<div style={{textAlign:"center",padding:"60px 0",color:"#7a90b0"}}>Nenhuma operação ativa</div>
             :<div style={{display:"flex",flexDirection:"column",gap:8}}>
               {opsVenc.map(e=>{
                 const c=getCliente(e.cliente_id);
                 const st=statusVenc(e.dia_venc,e.historico);
                 const atraso=diasAtraso(e.dia_venc);
                 return(
-                  <div key={e.id} onClick={()=>{setClienteSel(c);setEmpSel(e);setStep(3);setAba("detalhe");}} style={{background:"#111320",border:`1px solid ${SC[st]}40`,borderLeft:`4px solid ${SC[st]}`,borderRadius:10,padding:12,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div key={e.id} onClick={()=>{setClienteSel(c);setEmpSel(e);setStep(3);setAba("detalhe");}} style={{background:"#ffffff",border:`1px solid ${SC[st]}40`,borderLeft:`4px solid ${SC[st]}`,borderRadius:10,padding:12,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <div>
                       <div style={{fontWeight:700,fontSize:14}}>{primeiroNome(c?.nome)}</div>
                       {c?.ref1_nome&&<div style={{color:"#f59e0b",fontSize:11}}>📞 {c.ref1_nome} · {c.ref1_tel}</div>}
-                      <div style={{color:"#94a3b8",fontSize:12,marginTop:2}}>Saldo: <b style={{color:"#ef4444"}}>{fmt(e.capital_atual)}</b> · Min: <b style={{color:"#3b82f6"}}>{fmt(minJuros(e.capital_atual,e.taxa))}</b></div>
+                      <div style={{color:"#4a6080",fontSize:12,marginTop:2}}>Saldo: <b style={{color:"#ef4444"}}>{fmt(e.capital_atual)}</b> · Min: <b style={{color:"#3b82f6"}}>{fmt(minJuros(e.capital_atual,e.taxa))}</b></div>
                     </div>
                     <div style={{textAlign:"right"}}>
                       <div style={{fontWeight:800,fontSize:20,color:SC[st]}}>Dia {e.dia_venc||"—"}</div>
@@ -342,8 +342,8 @@ export default function App() {
         {aba==="cobranca" && (
           <div>
             <div style={{fontWeight:700,fontSize:15,marginBottom:4}}>🔔 Cobranças</div>
-            <div style={{color:"#64748b",fontSize:12,marginBottom:14}}>Atrasados, hoje e em breve</div>
-            {opsAlerta.length===0?<div style={{textAlign:"center",padding:"60px 0",color:"#334155"}}><div style={{fontSize:40,marginBottom:10}}>✅</div><div>Nenhuma cobrança!</div></div>
+            <div style={{color:"#5a7090",fontSize:12,marginBottom:14}}>Atrasados, hoje e em breve</div>
+            {opsAlerta.length===0?<div style={{textAlign:"center",padding:"60px 0",color:"#7a90b0"}}><div style={{fontSize:40,marginBottom:10}}>✅</div><div>Nenhuma cobrança!</div></div>
             :<div>
               {["atrasado","hoje","proximo"].map(tipo=>{
                 const grupo=opsAlerta.filter(e=>statusVenc(e.dia_venc,e.historico)===tipo);
@@ -356,11 +356,11 @@ export default function App() {
                       const c=getCliente(e.cliente_id);
                       const atraso=diasAtraso(e.dia_venc);
                       return(
-                        <div key={e.id} onClick={()=>{setClienteSel(c);setEmpSel(e);setStep(3);setAba("detalhe");}} style={{background:"#111320",border:`1px solid ${SC[tipo]}40`,borderLeft:`4px solid ${SC[tipo]}`,borderRadius:10,padding:12,cursor:"pointer",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                        <div key={e.id} onClick={()=>{setClienteSel(c);setEmpSel(e);setStep(3);setAba("detalhe");}} style={{background:"#ffffff",border:`1px solid ${SC[tipo]}40`,borderLeft:`4px solid ${SC[tipo]}`,borderRadius:10,padding:12,cursor:"pointer",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                           <div>
                             <div style={{fontWeight:700,fontSize:14}}>{primeiroNome(c?.nome)}</div>
                             {c?.ref1_nome&&<div style={{color:"#f59e0b",fontSize:11}}>📞 {c.ref1_nome} · {c.ref1_tel}</div>}
-                            <div style={{color:"#94a3b8",fontSize:12,marginTop:2}}>Saldo: <b style={{color:"#ef4444"}}>{fmt(e.capital_atual)}</b> · Pagar: <b style={{color:SC[tipo]}}>{fmt(minJuros(e.capital_atual,e.taxa))}</b></div>
+                            <div style={{color:"#4a6080",fontSize:12,marginTop:2}}>Saldo: <b style={{color:"#ef4444"}}>{fmt(e.capital_atual)}</b> · Pagar: <b style={{color:SC[tipo]}}>{fmt(minJuros(e.capital_atual,e.taxa))}</b></div>
                             {e.tipo==="parcelado"&&(()=>{
                               const pagas=e.historico?.filter(h=>(h.abateCapital||0)>0).length||0;
                               const parcela=pmt(e.capital,e.taxa,e.num_parcelas);
@@ -388,16 +388,16 @@ export default function App() {
         {aba==="quitados" && (
           <div>
             <div style={{fontWeight:700,fontSize:15,marginBottom:14}}>✅ Operações Quitadas ({todasOpsQuitadas.length})</div>
-            {todasOpsQuitadas.length===0?<div style={{textAlign:"center",padding:"60px 0",color:"#334155"}}>Nenhuma operação quitada</div>
+            {todasOpsQuitadas.length===0?<div style={{textAlign:"center",padding:"60px 0",color:"#7a90b0"}}>Nenhuma operação quitada</div>
             :<div style={{display:"flex",flexDirection:"column",gap:8}}>
               {todasOpsQuitadas.map(e=>{
                 const c=getCliente(e.cliente_id);
                 return(
-                  <div key={e.id} onClick={()=>{setClienteSel(c);setEmpSel(e);setStep(3);setAba("detalhe");}} style={{background:"#111320",border:"1px solid #10b98130",borderLeft:"4px solid #10b981",borderRadius:10,padding:12,cursor:"pointer"}}>
+                  <div key={e.id} onClick={()=>{setClienteSel(c);setEmpSel(e);setStep(3);setAba("detalhe");}} style={{background:"#ffffff",border:"1px solid #10b98130",borderLeft:"4px solid #10b981",borderRadius:10,padding:12,cursor:"pointer"}}>
                     <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
                       <div>
                         <div style={{fontWeight:700,fontSize:14}}>{c?.nome}</div>
-                        <div style={{color:"#64748b",fontSize:12}}>{c?.telefone}</div>
+                        <div style={{color:"#5a7090",fontSize:12}}>{c?.telefone}</div>
                         {c?.ref1_nome&&<div style={{color:"#f59e0b",fontSize:11}}>📞 {c.ref1_nome}</div>}
                       </div>
                       <span style={{background:"#10b98118",color:"#10b981",padding:"2px 8px",borderRadius:20,fontSize:11,fontWeight:700}}>✅ Quitado</span>
@@ -434,9 +434,9 @@ export default function App() {
         {/* ===== DETALHE CLIENTE - LISTA DE OPERAÇÕES ===== */}
         {aba==="detalhe" && step===2 && clienteSel && (
           <div>
-            <div style={{background:"#111320",border:"1px solid #1e2235",borderRadius:12,padding:14,marginBottom:16}}>
+            <div style={{background:"#ffffff",border:"1px solid #b8cef5",borderRadius:12,padding:14,marginBottom:16}}>
               <div style={{fontWeight:800,fontSize:17,marginBottom:2}}>{clienteSel.nome}</div>
-              <div style={{color:"#64748b",fontSize:12}}>{clienteSel.cpf} · {clienteSel.telefone}</div>
+              <div style={{color:"#5a7090",fontSize:12}}>{clienteSel.cpf} · {clienteSel.telefone}</div>
               {clienteSel.ref1_nome&&<div style={{color:"#f59e0b",fontSize:12,marginTop:4}}>📞 {clienteSel.ref1_nome} · {clienteSel.ref1_tel} ({clienteSel.ref1_par})</div>}
               {clienteSel.ref2_nome&&<div style={{color:"#f59e0b",fontSize:12,marginTop:2}}>📞 {clienteSel.ref2_nome} · {clienteSel.ref2_tel} ({clienteSel.ref2_par})</div>}
               <div style={{display:"flex",gap:14,marginTop:10,flexWrap:"wrap"}}>
@@ -448,16 +448,16 @@ export default function App() {
 
             <div style={{fontWeight:700,fontSize:14,marginBottom:10}}>📋 Operações</div>
             {empsDoCliente(clienteSel.id).length===0
-              ? <div style={{textAlign:"center",padding:"40px 0",color:"#475569"}}>Nenhuma operação. Clique em "+ Operação" para adicionar.</div>
+              ? <div style={{textAlign:"center",padding:"40px 0",color:"#6a80a0"}}>Nenhuma operação. Clique em "+ Operação" para adicionar.</div>
               : <div style={{display:"flex",flexDirection:"column",gap:8}}>
                   {empsDoCliente(clienteSel.id).map((e,i)=>{
                     const quitado=e.capital_atual<=0;
                     const st=statusVenc(e.dia_venc,e.historico);
                     const pct=Math.round(((e.capital-e.capital_atual)/e.capital)*100);
                     return(
-                      <div key={e.id} onClick={()=>abrirEmprestimo(e)} style={{background:"#111320",border:`1px solid ${quitado?"#10b98130":"#1e2235"}`,borderLeft:`4px solid ${quitado?"#10b981":SC[st]}`,borderRadius:10,padding:14,cursor:"pointer"}}>
+                      <div key={e.id} onClick={()=>abrirEmprestimo(e)} style={{background:"#ffffff",border:`1px solid ${quitado?"#10b98130":"#1e2235"}`,borderLeft:`4px solid ${quitado?"#10b981":SC[st]}`,borderRadius:10,padding:14,cursor:"pointer"}}>
                         <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
-                          <div style={{fontWeight:700,fontSize:13,color:"#94a3b8"}}>Operação {i+1} · {e.tipo==="minimo"?"Só juros":"Parcelado"} · Dia {e.dia_venc}</div>
+                          <div style={{fontWeight:700,fontSize:13,color:"#4a6080"}}>Operação {i+1} · {e.tipo==="minimo"?"Só juros":"Parcelado"} · Dia {e.dia_venc}</div>
                           <span style={{background:quitado?"#10b98118":SC[st]+"18",color:quitado?"#10b981":SC[st],padding:"2px 8px",borderRadius:20,fontSize:11,fontWeight:700}}>{quitado?"✅ Quitado":SL[st]}</span>
                         </div>
                         <div style={{display:"flex",gap:14,marginBottom:8,flexWrap:"wrap"}}>
@@ -466,7 +466,7 @@ export default function App() {
                           <Chip label="Taxa" val={`${e.taxa}%`} color="#8b5cf6"/>
                           <Chip label="Mínimo" val={quitado?"—":fmt(minJuros(e.capital_atual,e.taxa))} color="#3b82f6"/>
                         </div>
-                        <div style={{background:"#0d0f18",borderRadius:4,height:4,overflow:"hidden"}}>
+                        <div style={{background:"#e8f0fe",borderRadius:4,height:4,overflow:"hidden"}}>
                           <div style={{height:"100%",width:`${Math.min(100,pct)}%`,background:quitado?"#10b981":"linear-gradient(90deg,#f59e0b,#ef4444)",borderRadius:4}}/>
                         </div>
                       </div>
@@ -476,7 +476,7 @@ export default function App() {
 
             {/* Modal nova operação */}
             {modoForm==="emprestimo" && (
-              <div style={{background:"#111320",border:"1px solid #f59e0b40",borderRadius:12,padding:16,marginTop:16}}>
+              <div style={{background:"#ffffff",border:"1px solid #f59e0b40",borderRadius:12,padding:16,marginTop:16}}>
                 <div style={{fontWeight:700,marginBottom:14,fontSize:14}}>💰 Nova Operação</div>
                 <Grid2>
                   <F label="Capital (R$) *" name="capital" type="number" value={novoEmpForm.capital} onChange={e=>setNovoEmpForm(f=>({...f,[e.target.name]:e.target.value}))} ph="0,00"/>
@@ -488,7 +488,7 @@ export default function App() {
                   <label style={lbl}>Modalidade</label>
                   <div style={{display:"flex",gap:8}}>
                     {[["minimo","Só Juros"],["parcelado","Parcelado"]].map(([v,t])=>(
-                      <div key={v} onClick={()=>setNovoEmpForm(f=>({...f,tipo:v}))} style={{flex:1,padding:10,borderRadius:8,cursor:"pointer",border:`2px solid ${novoEmpForm.tipo===v?"#f59e0b":"#1e2235"}`,background:novoEmpForm.tipo===v?"#f59e0b10":"#0d0f18",fontWeight:700,fontSize:13,color:novoEmpForm.tipo===v?"#f59e0b":"#e2e8f0",textAlign:"center"}}>{t}</div>
+                      <div key={v} onClick={()=>setNovoEmpForm(f=>({...f,tipo:v}))} style={{flex:1,padding:10,borderRadius:8,cursor:"pointer",border:`2px solid ${novoEmpForm.tipo===v?"#f59e0b":"#1e2235"}`,background:novoEmpForm.tipo===v?"#f59e0b10":"#e8f0fe",fontWeight:700,fontSize:13,color:novoEmpForm.tipo===v?"#f59e0b":"#e2e8f0",textAlign:"center"}}>{t}</div>
                     ))}
                   </div>
                 </div>
@@ -498,9 +498,9 @@ export default function App() {
                   <label style={lbl}>Tipo de Cliente</label>
                   <div style={{display:"flex",gap:8}}>
                     {[["novo","🆕 Novo","Empréstimo começa agora"],["antigo","🕐 Antigo","Já tem saldo em aberto"]].map(([v,t,d])=>(
-                      <div key={v} onClick={()=>setNovoEmpForm(f=>({...f,cliente_tipo:v,saldo_atual:v==="novo"?f.capital:f.saldo_atual}))} style={{flex:1,padding:10,borderRadius:8,cursor:"pointer",border:`2px solid ${(novoEmpForm.cliente_tipo||"novo")===v?"#f59e0b":"#1e2235"}`,background:(novoEmpForm.cliente_tipo||"novo")===v?"#f59e0b10":"#0d0f18"}}>
+                      <div key={v} onClick={()=>setNovoEmpForm(f=>({...f,cliente_tipo:v,saldo_atual:v==="novo"?f.capital:f.saldo_atual}))} style={{flex:1,padding:10,borderRadius:8,cursor:"pointer",border:`2px solid ${(novoEmpForm.cliente_tipo||"novo")===v?"#f59e0b":"#1e2235"}`,background:(novoEmpForm.cliente_tipo||"novo")===v?"#f59e0b10":"#e8f0fe"}}>
                         <div style={{fontWeight:700,fontSize:13,color:(novoEmpForm.cliente_tipo||"novo")===v?"#f59e0b":"#e2e8f0"}}>{t}</div>
-                        <div style={{fontSize:11,color:"#64748b",marginTop:2}}>{d}</div>
+                        <div style={{fontSize:11,color:"#5a7090",marginTop:2}}>{d}</div>
                       </div>
                     ))}
                   </div>
@@ -509,12 +509,12 @@ export default function App() {
                   <div style={{background:"#f59e0b10",border:"1px solid #f59e0b30",borderRadius:8,padding:12,marginBottom:12}}>
                     <div style={{color:"#f59e0b",fontWeight:700,fontSize:12,marginBottom:8}}>🕐 Saldo Atual do Cliente</div>
                     <F label="Saldo devedor atual (R$) *" name="saldo_atual" type="number" value={novoEmpForm.saldo_atual||""} onChange={e=>setNovoEmpForm(f=>({...f,[e.target.name]:e.target.value}))} ph="Quanto o cliente ainda deve hoje"/>
-                    <div style={{color:"#64748b",fontSize:11,marginTop:6}}>O histórico anterior não é necessário. O sistema começa a partir deste saldo.</div>
+                    <div style={{color:"#5a7090",fontSize:11,marginTop:6}}>O histórico anterior não é necessário. O sistema começa a partir deste saldo.</div>
                   </div>
                 )}
                 <div style={{marginBottom:10}}><label style={lbl}>Obs</label><textarea name="obs" value={novoEmpForm.obs} onChange={e=>setNovoEmpForm(f=>({...f,[e.target.name]:e.target.value}))} style={{...inp,height:50,resize:"vertical"}}/></div>
                 {(()=>{const sim=simular();if(!sim)return null;return(
-                  <div style={{background:"#0d0f18",borderRadius:8,padding:12,marginBottom:12}}>
+                  <div style={{background:"#e8f0fe",borderRadius:8,padding:12,marginBottom:12}}>
                     {sim.tipo==="minimo"?<div style={{display:"flex",gap:16,flexWrap:"wrap"}}><SBox label="Capital" val={fmt(parseFloat(novoEmpForm.capital))} color="#f59e0b"/><SBox label="Mínimo/mês" val={fmt(sim.min)} color="#3b82f6"/><SBox label="Para quitar" val={fmt(sim.total)} color="#ef4444"/></div>
                     :<div style={{display:"flex",gap:16,flexWrap:"wrap"}}><SBox label="Capital" val={fmt(parseFloat(novoEmpForm.capital))} color="#f59e0b"/><SBox label={`${sim.n}x de`} val={fmt(sim.parcela)} color="#3b82f6"/><SBox label="Total" val={fmt(sim.total)} color="#ef4444"/></div>}
                   </div>
@@ -543,12 +543,12 @@ export default function App() {
 
           return(
             <div>
-              <div style={{background:"#111320",border:"1px solid #1e2235",borderRadius:10,padding:12,marginBottom:14}}>
+              <div style={{background:"#ffffff",border:"1px solid #b8cef5",borderRadius:10,padding:12,marginBottom:14}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
                   <div>
                     <div style={{fontWeight:800,fontSize:16}}>{c.nome}</div>
-                    <div style={{color:"#64748b",fontSize:12,marginBottom:4}}>{c.telefone}</div>
-                    <div style={{color:"#94a3b8",fontSize:12}}>Operação {opIdx} · {e.tipo==="minimo"?"Só juros":"Parcelado"} · Dia {e.dia_venc}</div>
+                    <div style={{color:"#5a7090",fontSize:12,marginBottom:4}}>{c.telefone}</div>
+                    <div style={{color:"#4a6080",fontSize:12}}>Operação {opIdx} · {e.tipo==="minimo"?"Só juros":"Parcelado"} · Dia {e.dia_venc}</div>
                     {e.tipo==="parcelado"&&<div style={{color:"#8b5cf6",fontSize:12}}>Parcelas: <b>{parcelasPagas}</b> pagas · <b>{Math.max(0,(totalParcelas||0)-parcelasPagas)}</b> em aberto</div>}
                     {!quitado&&<div style={{color:SC[st],fontSize:12,fontWeight:600}}>{SL[st]}{st==="atrasado"?` (${atraso} dias)`:""}</div>}
                   </div>
@@ -562,29 +562,29 @@ export default function App() {
                 {[["Capital",fmt(e.capital),"#f59e0b"],["Saldo",fmt(e.capital_atual),quitado?"#10b981":"#ef4444"],["Taxa",`${e.taxa}%`,"#8b5cf6"],
                   e.tipo==="parcelado"?["Parcela",fmt(valorParcela),"#3b82f6"]:["Mínimo",quitado?"—":fmt(jAtual),"#3b82f6"],
                   ["Quitar",quitado?"—":fmt(e.capital_atual+jAtual),"#f97316"]].map(([l,v,color])=>(
-                  <div key={l} style={{background:"#111320",border:"1px solid #1e2235",borderRadius:8,padding:10}}>
-                    <div style={{color:"#64748b",fontSize:10,marginBottom:2}}>{l.toUpperCase()}</div>
+                  <div key={l} style={{background:"#ffffff",border:"1px solid #b8cef5",borderRadius:8,padding:10}}>
+                    <div style={{color:"#5a7090",fontSize:10,marginBottom:2}}>{l.toUpperCase()}</div>
                     <div style={{fontWeight:800,fontSize:13,color}}>{v}</div>
                   </div>
                 ))}
               </div>
 
-              <div style={{background:"#111320",border:"1px solid #1e2235",borderRadius:8,padding:10,marginBottom:12}}>
+              <div style={{background:"#ffffff",border:"1px solid #b8cef5",borderRadius:8,padding:10,marginBottom:12}}>
                 <div style={{display:"flex",justifyContent:"space-between",marginBottom:4,fontSize:11}}>
-                  <span style={{color:"#64748b"}}>Progresso</span><span style={{fontWeight:700}}>{Math.min(100,pct)}%</span>
+                  <span style={{color:"#5a7090"}}>Progresso</span><span style={{fontWeight:700}}>{Math.min(100,pct)}%</span>
                 </div>
-                <div style={{background:"#0d0f18",borderRadius:4,height:5,overflow:"hidden"}}>
+                <div style={{background:"#e8f0fe",borderRadius:4,height:5,overflow:"hidden"}}>
                   <div style={{height:"100%",width:`${Math.min(100,pct)}%`,background:quitado?"#10b981":"linear-gradient(90deg,#f59e0b,#ef4444)",borderRadius:4}}/>
                 </div>
               </div>
 
               {/* Registrar pagamento */}
               {!quitado&&(
-                <div style={{background:"#111320",border:"1px solid #1e2235",borderRadius:10,padding:14,marginBottom:12}}>
+                <div style={{background:"#ffffff",border:"1px solid #b8cef5",borderRadius:10,padding:14,marginBottom:12}}>
                   <div style={{fontWeight:700,marginBottom:10,fontSize:13,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                     {editandoPag!==null?"✏️ Editar":"💵 Registrar Pagamento"}
                     {e.tipo==="parcelado"&&<span style={{background:"#8b5cf620",color:"#8b5cf6",padding:"2px 8px",borderRadius:20,fontSize:11}}>Parcela {parcelasPagas+1}/{totalParcelas}</span>}
-                    {editandoPag!==null&&<button onClick={()=>{setEditandoPag(null);setNovoPag({valor:"",data:today(),obs:"",multa:""}); }} style={{marginLeft:"auto",background:"none",border:"none",color:"#64748b",cursor:"pointer",fontSize:12}}>cancelar</button>}
+                    {editandoPag!==null&&<button onClick={()=>{setEditandoPag(null);setNovoPag({valor:"",data:today(),obs:"",multa:""}); }} style={{marginLeft:"auto",background:"none",border:"none",color:"#5a7090",cursor:"pointer",fontSize:12}}>cancelar</button>}
                   </div>
                   <div style={{display:"flex",gap:8,marginBottom:12}}>
                     <button onClick={()=>setNovoPag(p=>({...p,valor:jAtual.toFixed(2)}))} style={{flex:1,background:"#f59e0b18",border:"1px solid #f59e0b40",color:"#f59e0b",borderRadius:8,padding:"8px 6px",cursor:"pointer",fontWeight:700,fontSize:11,textAlign:"center"}}>
@@ -613,7 +613,7 @@ export default function App() {
                           <label style={lbl}>Valor da Multa (R$)</label>
                           <input type="number" value={novoPag.multa} onChange={ev=>setNovoPag(p=>({...p,multa:ev.target.value}))} style={inp} placeholder="0,00"/>
                         </div>
-                        <div style={{color:"#64748b",fontSize:11,paddingBottom:8}}>Opcional — separado do pagamento</div>
+                        <div style={{color:"#5a7090",fontSize:11,paddingBottom:8}}>Opcional — separado do pagamento</div>
                       </div>
                       {novoPag.multa&&parseFloat(novoPag.multa)>0&&(
                         <div style={{color:"#ef4444",fontSize:12,marginTop:6,fontWeight:600}}>
@@ -624,7 +624,7 @@ export default function App() {
                   )}
                   {novoPag.valor&&parseFloat(novoPag.valor)>0&&(()=>{
                     const vp=parseFloat(novoPag.valor),j=jAtual,abate=Math.max(0,vp-j);
-                    return<div style={{background:"#0d0f18",borderRadius:6,padding:8,marginBottom:8,fontSize:11,display:"flex",gap:12,flexWrap:"wrap"}}>
+                    return<div style={{background:"#e8f0fe",borderRadius:6,padding:8,marginBottom:8,fontSize:11,display:"flex",gap:12,flexWrap:"wrap"}}>
                       <span>💰 Juros: <b style={{color:"#f59e0b"}}>{fmt(Math.min(vp,j))}</b></span>
                       <span>📉 Abate: <b style={{color:"#10b981"}}>{fmt(abate)}</b></span>
                       <span>🔵 Saldo: <b style={{color:"#3b82f6"}}>{fmt(Math.max(0,e.capital_atual-abate))}</b></span>
@@ -636,14 +636,14 @@ export default function App() {
               )}
 
               {/* Histórico */}
-              <div style={{background:"#111320",border:"1px solid #1e2235",borderRadius:10,padding:14}}>
+              <div style={{background:"#ffffff",border:"1px solid #b8cef5",borderRadius:10,padding:14}}>
                 <div style={{fontWeight:700,marginBottom:10,fontSize:13}}>📅 Histórico</div>
                 {!e.historico||e.historico.length===0
-                  ?<div style={{color:"#475569",fontSize:13,textAlign:"center",padding:"12px 0"}}>Nenhum pagamento</div>
+                  ?<div style={{color:"#6a80a0",fontSize:13,textAlign:"center",padding:"12px 0"}}>Nenhum pagamento</div>
                   :<div style={{overflowX:"auto"}}>
                     <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
-                      <thead><tr style={{borderBottom:"1px solid #1e2235"}}>
-                        {["#","Data","Valor","Juros","Abate","Multa","Saldo","Tipo","Obs",""].map(h=><th key={h} style={{textAlign:"left",padding:"6px 5px",color:"#94a3b8",fontWeight:600,fontSize:10}}>{h}</th>)}
+                      <thead><tr style={{borderBottom:"1px solid #b8cef5"}}>
+                        {["#","Data","Valor","Juros","Abate","Multa","Saldo","Tipo","Obs",""].map(h=><th key={h} style={{textAlign:"left",padding:"6px 5px",color:"#4a6080",fontWeight:600,fontSize:10}}>{h}</th>)}
                       </tr></thead>
                       <tbody>
                         {e.historico.map((h,i)=>{
@@ -652,18 +652,18 @@ export default function App() {
                           const numParcela=e.tipo==="parcelado"?(h.abateCapital>0?(()=>{const n=e.historico.slice(0,i+1).filter(x=>x.abateCapital>0).length;return`${n}/${totalParcelas}`;})():<span style={{color:"#f59e0b",fontSize:10}}>J</span>):i+1;
                           return(
                             <tr key={i} style={{borderBottom:"1px solid #0d0f18",background:editandoPag===i?"#f59e0b10":"transparent"}}>
-                              <td style={{padding:"7px 5px",color:"#94a3b8",fontWeight:700}}>{numParcela}</td>
-                              <td style={{padding:"7px 5px",color:"#e2e8f0"}}>{fmtDate(h.data)}</td>
+                              <td style={{padding:"7px 5px",color:"#4a6080",fontWeight:700}}>{numParcela}</td>
+                              <td style={{padding:"7px 5px",color:"#1a2a4a"}}>{fmtDate(h.data)}</td>
                               <td style={{padding:"7px 5px",fontWeight:700,color:"#10b981"}}>{fmt(h.valorPago)}</td>
                               <td style={{padding:"7px 5px",color:"#f59e0b"}}>{fmt(h.juros)}</td>
                               <td style={{padding:"7px 5px",color:"#3b82f6"}}>{fmt(h.abateCapital)}</td>
                               <td style={{padding:"7px 5px",color:(h.multa||0)>0?"#ef4444":"#475569",fontWeight:(h.multa||0)>0?700:400}}>{(h.multa||0)>0?fmt(h.multa):"—"}</td>
                               <td style={{padding:"7px 5px",fontWeight:700,color:h.capitalDepois===0?"#10b981":"#e2e8f0"}}>{fmt(h.capitalDepois)}</td>
                               <td style={{padding:"7px 5px"}}><span style={{background:tipoColor+"20",color:tipoColor,padding:"2px 5px",borderRadius:8,fontSize:10,fontWeight:700}}>{tipoLabel}</span></td>
-                              <td style={{padding:"7px 5px",color:"#64748b",maxWidth:70,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{h.obs||"—"}</td>
+                              <td style={{padding:"7px 5px",color:"#5a7090",maxWidth:70,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{h.obs||"—"}</td>
                               <td style={{padding:"7px 5px",whiteSpace:"nowrap"}}>
-                                <button onClick={ev=>{ev.stopPropagation();const hh=e.historico[i];setNovoPag({valor:String(hh.valorPago),data:hh.data,obs:hh.obs||""});setEditandoPag(i);}} style={{background:"#1e2235",border:"none",color:"#f59e0b",borderRadius:4,padding:"2px 5px",cursor:"pointer",fontSize:10,marginRight:2}}>✏️</button>
-                                <button onClick={ev=>{ev.stopPropagation();excluirPagamento(i);}} style={{background:"#1e2235",border:"none",color:"#ef4444",borderRadius:4,padding:"2px 5px",cursor:"pointer",fontSize:10}}>🗑️</button>
+                                <button onClick={ev=>{ev.stopPropagation();const hh=e.historico[i];setNovoPag({valor:String(hh.valorPago),data:hh.data,obs:hh.obs||""});setEditandoPag(i);}} style={{background:"#c8d8f8",border:"none",color:"#f59e0b",borderRadius:4,padding:"2px 5px",cursor:"pointer",fontSize:10,marginRight:2}}>✏️</button>
+                                <button onClick={ev=>{ev.stopPropagation();excluirPagamento(i);}} style={{background:"#c8d8f8",border:"none",color:"#ef4444",borderRadius:4,padding:"2px 5px",cursor:"pointer",fontSize:10}}>🗑️</button>
                               </td>
                             </tr>
                           );
@@ -734,7 +734,7 @@ export default function App() {
               <div style={{fontWeight:700,fontSize:15,marginBottom:16}}>📊 Relatório Financeiro</div>
 
               {/* Seletor de período */}
-              <div style={{background:"#111320",border:"1px solid #1e2235",borderRadius:10,padding:14,marginBottom:20}}>
+              <div style={{background:"#ffffff",border:"1px solid #b8cef5",borderRadius:10,padding:14,marginBottom:20}}>
                 <div style={{display:"flex",gap:8,marginBottom:12}}>
                   {[["mes","Mês Atual"],["periodo","Por Período"]].map(([v,t])=>(
                     <button key={v} onClick={()=>{ setRelPeriodo(v); if(v==="mes"){const h=new Date();setRelDataInicio(new Date(h.getFullYear(),h.getMonth(),1).toISOString().split("T")[0]);setRelDataFim(h.toISOString().split("T")[0]);}}} style={{flex:1,padding:"8px 0",background:relPeriodo===v?"linear-gradient(135deg,#f59e0b,#ef4444)":"#1a1d2e",color:relPeriodo===v?"#fff":"#94a3b8",border:"none",borderRadius:8,fontWeight:700,fontSize:13,cursor:"pointer"}}>{t}</button>
@@ -746,22 +746,22 @@ export default function App() {
                     <div><label style={lbl}>Data Fim</label><input type="date" value={relDataFim} onChange={e=>setRelDataFim(e.target.value)} style={inp}/></div>
                   </div>
                 )}
-                <div style={{color:"#64748b",fontSize:11,marginTop:8}}>Período: {fmtDate(relDataInicio)} até {fmtDate(relDataFim)}</div>
+                <div style={{color:"#5a7090",fontSize:11,marginTop:8}}>Período: {fmtDate(relDataInicio)} até {fmtDate(relDataFim)}</div>
               </div>
 
               {/* Cards */}
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:20}}>
                 {cards.map(({label,val,sub,color,bg})=>(
-                  <div key={label} style={{background:"#111320",border:`1px solid ${bg}30`,borderLeft:`4px solid ${bg}`,borderRadius:10,padding:14}}>
-                    <div style={{color:"#64748b",fontSize:11,marginBottom:4}}>{label}</div>
+                  <div key={label} style={{background:"#ffffff",border:`1px solid ${bg}30`,borderLeft:`4px solid ${bg}`,borderRadius:10,padding:14}}>
+                    <div style={{color:"#5a7090",fontSize:11,marginBottom:4}}>{label}</div>
                     <div style={{fontWeight:800,fontSize:18,color,marginBottom:2}}>{val}</div>
-                    <div style={{color:"#475569",fontSize:11}}>{sub}</div>
+                    <div style={{color:"#6a80a0",fontSize:11}}>{sub}</div>
                   </div>
                 ))}
               </div>
 
               {/* Saldo em aberto */}
-              <div style={{background:"#111320",border:"1px solid #1e2235",borderRadius:10,padding:14,marginBottom:16}}>
+              <div style={{background:"#ffffff",border:"1px solid #b8cef5",borderRadius:10,padding:14,marginBottom:16}}>
                 <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>📋 Situação Atual da Carteira</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
                   {[
@@ -770,7 +770,7 @@ export default function App() {
                     ["Inadimplentes", opsAlerta.filter(e=>statusVenc(e.dia_venc,e.historico)==="atrasado").length+" ops", "#f97316"],
                   ].map(([l,v,color])=>(
                     <div key={l} style={{textAlign:"center"}}>
-                      <div style={{color:"#64748b",fontSize:10,marginBottom:4}}>{l.toUpperCase()}</div>
+                      <div style={{color:"#5a7090",fontSize:10,marginBottom:4}}>{l.toUpperCase()}</div>
                       <div style={{fontWeight:800,fontSize:15,color}}>{v}</div>
                     </div>
                   ))}
@@ -781,14 +781,14 @@ export default function App() {
               {(()=>{
                 const [statusAberto, setStatusAberto] = [relStatusAberto, setRelStatusAberto];
                 return (
-                  <div style={{background:"#111320",border:"1px solid #1e2235",borderRadius:10,padding:14,marginBottom:16}}>
+                  <div style={{background:"#ffffff",border:"1px solid #b8cef5",borderRadius:10,padding:14,marginBottom:16}}>
                     <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>👥 Status dos Clientes</div>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom: statusAberto?12:0}}>
                       {Object.entries(statusClienteInfo).filter(([k])=>k!=="sem_ops"&&k!=="quitado").map(([key,info])=>{
                         const qtd=clientes.filter(c=>statusCliente(empsDoCliente(c.id))===key).length;
                         const ativo=statusAberto===key;
                         return(
-                          <div key={key} onClick={()=>setRelStatusAberto(ativo?null:key)} style={{background:ativo?info.bg:"#0d0f18",borderRadius:8,padding:10,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",border:`1px solid ${ativo?info.color+"60":"transparent"}`}}>
+                          <div key={key} onClick={()=>setRelStatusAberto(ativo?null:key)} style={{background:ativo?info.bg:"#e8f0fe",borderRadius:8,padding:10,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",border:`1px solid ${ativo?info.color+"60":"transparent"}`}}>
                             <span style={{color:info.color,fontWeight:600,fontSize:12}}>{info.label}</span>
                             <div style={{display:"flex",alignItems:"center",gap:6}}>
                               <span style={{fontWeight:800,fontSize:16,color:info.color}}>{qtd}</span>
@@ -802,18 +802,18 @@ export default function App() {
                       const info=statusClienteInfo[statusAberto];
                       const clientesFiltrados2=clientes.filter(c=>statusCliente(empsDoCliente(c.id))===statusAberto);
                       return(
-                        <div style={{borderTop:"1px solid #1e2235",paddingTop:12}}>
+                        <div style={{borderTop:"1px solid #b8cef5",paddingTop:12}}>
                           <div style={{color:info.color,fontWeight:700,fontSize:12,marginBottom:8}}>{info.label} — {clientesFiltrados2.length} cliente(s)</div>
                           <div style={{display:"flex",flexDirection:"column",gap:8}}>
                             {clientesFiltrados2.map(c=>{
                               const emps2=empsDoCliente(c.id).filter(e=>e.capital_atual>0);
                               return(
-                                <div key={c.id} style={{background:"#0d0f18",borderRadius:8,padding:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                                <div key={c.id} style={{background:"#e8f0fe",borderRadius:8,padding:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                                   <div>
                                     <div style={{fontWeight:700,fontSize:14}}>{c.nome}</div>
-                                    <div style={{color:"#64748b",fontSize:12}}>{c.telefone}</div>
+                                    <div style={{color:"#5a7090",fontSize:12}}>{c.telefone}</div>
                                     {c.ref1_nome&&<div style={{color:"#f59e0b",fontSize:11}}>📞 {c.ref1_nome} · {c.ref1_tel}</div>}
-                                    <div style={{color:"#94a3b8",fontSize:11,marginTop:2}}>
+                                    <div style={{color:"#4a6080",fontSize:11,marginTop:2}}>
                                       Saldo: <b style={{color:"#ef4444"}}>{fmt(emps2.reduce((s,e)=>s+e.capital_atual,0))}</b>
                                       {emps2.length>0&&<> · Venc: <b style={{color:info.color}}>{emps2.map(e=>`Dia ${e.dia_venc}`).join(", ")}</b></>}
                                     </div>
@@ -835,9 +835,9 @@ export default function App() {
               {/* Detalhamento por operação no período */}
               {(()=>{
                 const opsNoPeriodo = emprestimos.filter(e => (e.historico||[]).some(h => { if(!h.data) return false; const d=new Date(h.data+"T12:00:00"); return d>=inicio&&d<=fim; }));
-                if(opsNoPeriodo.length===0) return <div style={{color:"#475569",fontSize:13,textAlign:"center",padding:"20px 0"}}>Nenhuma movimentação no período selecionado</div>;
+                if(opsNoPeriodo.length===0) return <div style={{color:"#6a80a0",fontSize:13,textAlign:"center",padding:"20px 0"}}>Nenhuma movimentação no período selecionado</div>;
                 return (
-                  <div style={{background:"#111320",border:"1px solid #1e2235",borderRadius:10,padding:14}}>
+                  <div style={{background:"#ffffff",border:"1px solid #b8cef5",borderRadius:10,padding:14}}>
                     <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>🗂️ Movimentações no Período</div>
                     <div style={{display:"flex",flexDirection:"column",gap:8}}>
                       {opsNoPeriodo.map(e=>{
@@ -848,7 +848,7 @@ export default function App() {
                         const totalA=pagsNoPeriodo.reduce((s,h)=>s+(h.abateCapital||0),0);
                         const totalM=pagsNoPeriodo.reduce((s,h)=>s+(h.multa||0),0);
                         return(
-                          <div key={e.id} style={{background:"#0d0f18",borderRadius:8,padding:12}}>
+                          <div key={e.id} style={{background:"#e8f0fe",borderRadius:8,padding:12}}>
                             <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
                               <div style={{fontWeight:700,fontSize:13}}>{c?.nome}</div>
                               <div style={{fontWeight:700,color:"#10b981",fontSize:13}}>{fmt(totalPags)}</div>
@@ -857,7 +857,7 @@ export default function App() {
                               <span style={{color:"#3b82f6"}}>Juros: <b>{fmt(totalJ)}</b></span>
                               <span style={{color:"#8b5cf6"}}>Amort: <b>{fmt(totalA)}</b></span>
                               {totalM>0&&<span style={{color:"#ef4444"}}>Multa: <b>{fmt(totalM)}</b></span>}
-                              <span style={{color:"#64748b"}}>{pagsNoPeriodo.length} pgto(s)</span>
+                              <span style={{color:"#5a7090"}}>{pagsNoPeriodo.length} pgto(s)</span>
                             </div>
                           </div>
                         );
@@ -878,11 +878,11 @@ export default function App() {
 const Sec = ({children,mt}) => <div style={{fontWeight:700,fontSize:11,color:"#f59e0b",textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:10,marginTop:mt?18:0}}>{children}</div>;
 const Grid2 = ({children}) => <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>{children}</div>;
 const F = ({label,name,value,onChange,type="text",ph,step}) => <div><label style={lbl}>{label}</label><input type={type} name={name} value={value} onChange={onChange} placeholder={ph} step={step} style={inp}/></div>;
-const Info = ({label,v}) => <div><div style={{color:"#475569",fontSize:10,marginBottom:2}}>{label}</div><div style={{fontSize:12}}>{v||"—"}</div></div>;
-const Chip = ({label,val,color}) => <div><div style={{color:"#475569",fontSize:10}}>{label}</div><div style={{fontWeight:700,color,fontSize:12}}>{val}</div></div>;
-const SBox = ({label,val,color}) => <div style={{textAlign:"center"}}><div style={{color:"#64748b",fontSize:10,marginBottom:2}}>{label}</div><div style={{fontWeight:800,fontSize:14,color}}>{val}</div></div>;
+const Info = ({label,v}) => <div><div style={{color:"#6a80a0",fontSize:10,marginBottom:2}}>{label}</div><div style={{fontSize:12}}>{v||"—"}</div></div>;
+const Chip = ({label,val,color}) => <div><div style={{color:"#6a80a0",fontSize:10}}>{label}</div><div style={{fontWeight:700,color,fontSize:12}}>{val}</div></div>;
+const SBox = ({label,val,color}) => <div style={{textAlign:"center"}}><div style={{color:"#5a7090",fontSize:10,marginBottom:2}}>{label}</div><div style={{fontWeight:800,fontSize:14,color}}>{val}</div></div>;
 
-const inp = {width:"100%",background:"#1a1d2e",border:"1px solid #1e2235",borderRadius:7,padding:"8px 10px",color:"#e2e8f0",fontSize:13,outline:"none",boxSizing:"border-box"};
-const lbl = {display:"block",color:"#94a3b8",fontSize:11,marginBottom:4,fontWeight:500};
+const inp = {width:"100%",background:"#dce8fd",border:"1px solid #b8cef5",borderRadius:7,padding:"8px 10px",color:"#1a2a4a",fontSize:13,outline:"none",boxSizing:"border-box"};
+const lbl = {display:"block",color:"#4a6080",fontSize:11,marginBottom:4,fontWeight:500};
 const btnPri = {background:"linear-gradient(135deg,#f59e0b,#ef4444)",color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontWeight:700,fontSize:13,cursor:"pointer"};
-const btnSec = {background:"#1a1d2e",color:"#e2e8f0",border:"1px solid #1e2235",borderRadius:8,padding:"8px 16px",fontWeight:600,fontSize:13,cursor:"pointer"};
+const btnSec = {background:"#dce8fd",color:"#1a2a4a",border:"1px solid #b8cef5",borderRadius:8,padding:"8px 16px",fontWeight:600,fontSize:13,cursor:"pointer"};
