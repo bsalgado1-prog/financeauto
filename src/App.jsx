@@ -477,13 +477,30 @@ export default function App() {
               {/* Registrar pagamento */}
               {!quitado && (
                 <div style={{background:"#111320",border:"1px solid #1e2235",borderRadius:10,padding:14,marginBottom:12}}>
-                  <div style={{fontWeight:700,marginBottom:10,fontSize:13,display:"flex",alignItems:"center",gap:8}}>
+                  <div style={{fontWeight:700,marginBottom:10,fontSize:13,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                     {editandoPag!==null?"✏️ Editar Pagamento":"💵 Registrar Pagamento"}
-                    {c.tipo==="parcelado"&&<span style={{background:"#8b5cf620",color:"#8b5cf6",padding:"2px 8px",borderRadius:20,fontSize:11}}>Parcela {parcelasPagas+1}/{totalParcelas} · {fmt(valorParcela)}</span>}
+                    {c.tipo==="parcelado"&&<span style={{background:"#8b5cf620",color:"#8b5cf6",padding:"2px 8px",borderRadius:20,fontSize:11}}>Parcela {parcelasPagas+1}/{totalParcelas}</span>}
                     {editandoPag!==null&&<button onClick={()=>{setEditandoPag(null);setNovoPag({valor:"",data:today(),obs:""}); }} style={{marginLeft:"auto",background:"none",border:"none",color:"#64748b",cursor:"pointer",fontSize:12}}>cancelar</button>}
                   </div>
+                  {/* Botões de atalho */}
+                  <div style={{display:"flex",gap:8,marginBottom:12}}>
+                    <button onClick={()=>setNovoPag(p=>({...p,valor:jAtual.toFixed(2)}))} style={{flex:1,background:"#f59e0b18",border:"1px solid #f59e0b40",color:"#f59e0b",borderRadius:8,padding:"8px 6px",cursor:"pointer",fontWeight:700,fontSize:11,textAlign:"center"}}>
+                      <div style={{fontSize:10,marginBottom:2}}>💰 Só Juros</div>
+                      <div>{fmt(jAtual)}</div>
+                    </button>
+                    {c.tipo==="parcelado"&&(
+                      <button onClick={()=>setNovoPag(p=>({...p,valor:valorParcela.toFixed(2)}))} style={{flex:1,background:"#3b82f618",border:"1px solid #3b82f640",color:"#3b82f6",borderRadius:8,padding:"8px 6px",cursor:"pointer",fontWeight:700,fontSize:11,textAlign:"center"}}>
+                        <div style={{fontSize:10,marginBottom:2}}>📦 Parcela</div>
+                        <div>{fmt(valorParcela)}</div>
+                      </button>
+                    )}
+                    <button onClick={()=>setNovoPag(p=>({...p,valor:(c.capital_atual+jAtual).toFixed(2)}))} style={{flex:1,background:"#10b98118",border:"1px solid #10b98140",color:"#10b981",borderRadius:8,padding:"8px 6px",cursor:"pointer",fontWeight:700,fontSize:11,textAlign:"center"}}>
+                      <div style={{fontSize:10,marginBottom:2}}>✅ Quitar</div>
+                      <div>{fmt(c.capital_atual+jAtual)}</div>
+                    </button>
+                  </div>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 2fr",gap:8,marginBottom:8}}>
-                    <div><label style={lbl}>Valor (R$)</label><input type="number" value={novoPag.valor} onChange={e=>setNovoPag(p=>({...p,valor:e.target.value}))} style={inp} placeholder={c.tipo==="parcelado"?fmt(valorParcela):"0,00"}/></div>
+                    <div><label style={lbl}>Valor (R$)</label><input type="number" value={novoPag.valor} onChange={e=>setNovoPag(p=>({...p,valor:e.target.value}))} style={inp} placeholder="0,00"/></div>
                     <div><label style={lbl}>Data</label><input type="date" value={novoPag.data} onChange={e=>setNovoPag(p=>({...p,data:e.target.value}))} style={inp}/></div>
                     <div><label style={lbl}>Obs</label><input value={novoPag.obs} onChange={e=>setNovoPag(p=>({...p,obs:e.target.value}))} style={inp} placeholder="Opcional..."/></div>
                   </div>
