@@ -307,6 +307,11 @@ export default function App() {
                             <div style={{fontWeight:700,fontSize:14}}>{primeiroNome(c?.nome)}</div>
                             {c?.ref1_nome&&<div style={{color:"#f59e0b",fontSize:11}}>📞 {c.ref1_nome} · {c.ref1_tel}</div>}
                             <div style={{color:"#94a3b8",fontSize:12,marginTop:2}}>Saldo: <b style={{color:"#ef4444"}}>{fmt(e.capital_atual)}</b> · Pagar: <b style={{color:SC[tipo]}}>{fmt(minJuros(e.capital_atual,e.taxa))}</b></div>
+                            {e.tipo==="parcelado"&&(()=>{
+                              const pagas=e.historico?.filter(h=>(h.abateCapital||0)>0).length||0;
+                              const parcela=pmt(e.capital,e.taxa,e.num_parcelas);
+                              return<div style={{color:"#8b5cf6",fontSize:11,marginTop:2}}>Parcela <b>{pagas+1}/{e.num_parcelas}</b> · <b>{fmt(parcela)}</b></div>;
+                            })()}
                           </div>
                           <div style={{textAlign:"right"}}>
                             <div style={{fontWeight:800,fontSize:20,color:SC[tipo]}}>Dia {e.dia_venc}</div>
