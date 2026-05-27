@@ -118,6 +118,7 @@ export default function App() {
   const hoje = new Date();
   const [relDataInicio, setRelDataInicio] = useState(new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split("T")[0]);
   const [relDataFim, setRelDataFim] = useState(hoje.toISOString().split("T")[0]);
+  const [relStatusAberto, setRelStatusAberto] = useState(null);
   const [toast, setToast] = useState(null);
 
   const showToast = (msg, tipo="ok") => { setToast({msg,tipo}); setTimeout(()=>setToast(null),3000); };
@@ -777,20 +778,59 @@ export default function App() {
               </div>
 
               {/* Status dos clientes */}
-              <div style={{background:"#111320",border:"1px solid #1e2235",borderRadius:10,padding:14,marginBottom:16}}>
-                <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>👥 Status dos Clientes</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                  {Object.entries(statusClienteInfo).filter(([k])=>k!=="sem_ops"&&k!=="quitado").map(([key,info])=>{
-                    const qtd=clientes.filter(c=>statusCliente(empsDoCliente(c.id))===key).length;
-                    return(
-                      <div key={key} style={{background:"#0d0f18",borderRadius:8,padding:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                        <span style={{color:info.color,fontWeight:600,fontSize:12}}>{info.label}</span>
-                        <span style={{fontWeight:800,fontSize:16,color:info.color}}>{qtd}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              {(()=>{
+                const [statusAberto, setStatusAberto] = [relStatusAberto, setRelStatusAberto];
+                return (
+                  <div style={{background:"#111320",border:"1px solid #1e2235",borderRadius:10,padding:14,marginBottom:16}}>
+                    <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>👥 Status dos Clientes</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom: statusAberto?12:0}}>
+                      {Object.entries(statusClienteInfo).filter(([k])=>k!=="sem_ops"&&k!=="quitado").map(([key,info])=>{
+                        const qtd=clientes.filter(c=>statusCliente(empsDoCliente(c.id))===key).length;
+                        const ativo=statusAberto===key;
+                        return(
+                          <div key={key} onClick={()=>setRelStatusAberto(ativo?null:key)} style={{background:ativo?info.bg:"#0d0f18",borderRadius:8,padding:10,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",border:`1px solid ${ativo?info.color+"60":"transparent"}`}}>
+                            <span style={{color:info.color,fontWeight:600,fontSize:12}}>{info.label}</span>
+                            <div style={{display:"flex",alignItems:"center",gap:6}}>
+                              <span style={{fontWeight:800,fontSize:16,color:info.color}}>{qtd}</span>
+                              <span style={{color:info.color,fontSize:10}}>{ativo?"▲":"▼"}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {statusAberto&&(()=>{
+                      const info=statusClienteInfo[statusAberto];
+                      const clientesFiltrados2=clientes.filter(c=>statusCliente(empsDoCliente(c.id))===statusAberto);
+                      return(
+                        <div style={{borderTop:"1px solid #1e2235",paddingTop:12}}>
+                          <div style={{color:info.color,fontWeight:700,fontSize:12,marginBottom:8}}>{info.label} — {clientesFiltrados2.length} cliente(s)</div>
+                          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                            {clientesFiltrados2.map(c=>{
+                              const emps2=empsDoCliente(c.id).filter(e=>e.capital_atual>0);
+                              return(
+                                <div key={c.id} style={{background:"#0d0f18",borderRadius:8,padding:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                                  <div>
+                                    <div style={{fontWeight:700,fontSize:14}}>{c.nome}</div>
+                                    <div style={{color:"#64748b",fontSize:12}}>{c.telefone}</div>
+                                    {c.ref1_nome&&<div style={{color:"#f59e0b",fontSize:11}}>📞 {c.ref1_nome} · {c.ref1_tel}</div>}
+                                    <div style={{color:"#94a3b8",fontSize:11,marginTop:2}}>
+                                      Saldo: <b style={{color:"#ef4444"}}>{fmt(emps2.reduce((s,e)=>s+e.capital_atual,0))}</b>
+                                      {emps2.length>0&&<> · Venc: <b style={{color:info.color}}>{emps2.map(e=>`Dia ${e.dia_venc}`).join(", ")}</b></>}
+                                    </div>
+                                  </div>
+                                  <button onClick={()=>{const saldo2=totalSaldo(c.id);const msg=`👥 *${info.label}*\n👤 *Cliente:* ${c.nome}\n📞 *Tel:* ${c.telefone}\n💰 *Saldo:* ${fmt(saldo2)}\n📅 *Venc:* ${emps2.map(e=>`Dia ${e.dia_venc}`).join(", ")||"—"}\n\n_FinanceAuto_`;abrirWhats(msg);}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:8,padding:"6px 10px",cursor:"pointer",fontWeight:700,fontSize:11,whiteSpace:"nowrap"}}>
+                                    📲
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                );
+              })()}
 
               {/* Detalhamento por operação no período */}
               {(()=>{
