@@ -56,6 +56,7 @@ const api = async (method, path, body) => {
 const db = {
   clientes: { listar: () => api("GET", "/clientes?order=criado_em.desc&select=*"), criar: (d) => api("POST", "/clientes", d), atualizar: (id, d) => api("PATCH", `/clientes?id=eq.${id}`, d) },
   emprestimos: { listar: () => api("GET", "/emprestimos?order=criado_em.desc&select=*"), listarPorCliente: (cid) => api("GET", `/emprestimos?cliente_id=eq.${cid}&order=criado_em.asc&select=*`), criar: (d) => api("POST", "/emprestimos", d), atualizar: (id, d) => api("PATCH", `/emprestimos?id=eq.${id}`, d) },
+  rapidos: { listar: () => api("GET", "/rapidos?order=criado_em.desc&select=*"), criar: (d) => api("POST", "/rapidos", d), atualizar: (id, d) => api("PATCH", `/rapidos?id=eq.${id}`, d) },
 };
 
 const fmt = (v) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0);
@@ -114,6 +115,11 @@ export default function App() {
   const [novoPag, setNovoPag] = useState({ valor:"", data:today(), obs:"", multa:"" });
   const [editandoPag, setEditandoPag] = useState(null);
   const [busca, setBusca] = useState("");
+  const [rapidos, setRapidos] = useState([]);
+  const [novoRapidoForm, setNovoRapidoForm] = useState({ nome:"", telefone:"", ref1_nome:"", ref1_tel:"", capital:"", valor_parcela:"", frequencia:"semanal", dia_semana:"", obs:"" });
+  const [rapidoSel, setRapidoSel] = useState(null);
+  const [novoPagRapido, setNovoPagRapido] = useState({ valor:"", data:today(), obs:"" });
+  const [mostrarFormRapido, setMostrarFormRapido] = useState(false);
   const [relPeriodo, setRelPeriodo] = useState("mes"); // mes | periodo
   const hoje = new Date();
   const [relDataInicio, setRelDataInicio] = useState(new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split("T")[0]);
@@ -126,8 +132,8 @@ export default function App() {
   const carregar = async () => {
     try {
       setLoading(true);
-      const [cs, es] = await Promise.all([db.clientes.listar(), db.emprestimos.listar()]);
-      setClientes(cs||[]); setEmprestimos(es||[]);
+      const [cs, es, rs] = await Promise.all([db.clientes.listar(), db.emprestimos.listar(), db.rapidos.listar()]);
+      setClientes(cs||[]); setEmprestimos(es||[]); setRapidos(rs||[]);
     } catch(e) { showToast("Erro ao carregar.","erro"); }
     finally { setLoading(false); }
   };
@@ -219,6 +225,39 @@ export default function App() {
     finally{setSalvando(false);}
   };
 
+  const salvarRapido = async () => {
+    if (!novoRapidoForm.nome||!novoRapidoForm.capital||!novoRapidoForm.valor_parcela) { showToast("Preencha nome, valor total e valor da parcela.","erro"); return; }
+    setSalvando(true);
+    try {
+      const capital = parseFloat(novoRapidoForm.capital);
+      await db.rapidos.criar({ ...novoRapidoForm, capital, valor_parcela:parseFloat(novoRapidoForm.valor_parcela), capital_atual:capital, historico:[], criado_em:new Date().toISOString() });
+      setNovoRapidoForm({ nome:"",telefone:"",ref1_nome:"",ref1_tel:"",capital:"",valor_parcela:"",frequencia:"semanal",dia_semana:"",obs:"" });
+      setMostrarFormRapido(false);
+      showToast("Cadastrado!"); await carregar();
+    } catch(e) { showToast("Erro: "+e.message,"erro"); }
+    finally { setSalvando(false); }
+  };
+
+  const pagarRapido = async () => {
+    const valor = parseFloat(novoPagRapido.valor);
+    if (!valor||valor<=0) { showToast("Informe o valor.","erro"); return; }
+    setSalvando(true);
+    try {
+      const r = rapidoSel;
+      const novoCapital = Math.max(0, r.capital_atual - valor);
+      const entrada = { data:novoPagRapido.data, valorPago:valor, capitalAntes:r.capital_atual, capitalDepois:novoCapital, obs:novoPagRapido.obs };
+      const historico = [...(r.historico||[]), entrada];
+      await db.rapidos.atualizar(r.id, { capital_atual:novoCapital, historico });
+      setNovoPagRapido({ valor:"", data:today(), obs:"" });
+      showToast("Pagamento registrado!");
+      await carregar();
+      const rs = await db.rapidos.listar();
+      setRapidos(rs||[]);
+      setRapidoSel(rs.find(x=>x.id===r.id)||null);
+    } catch(e) { showToast("Erro: "+e.message,"erro"); }
+    finally { setSalvando(false); }
+  };
+
   const abrirCliente = (c) => { setClienteSel(c); setStep(2); setAba("detalhe"); };
   const abrirEmprestimo = (e) => { setEmpSel(e); setStep(3); };
   const voltarParaCliente = () => { setStep(2); setEmpSel(null); setNovoPag({valor:"",data:today(),obs:"",multa:""}); setEditandoPag(null); };
@@ -231,8 +270,8 @@ export default function App() {
   };
 
   const filtrados = clientes.filter(c => c.nome?.toLowerCase().includes(busca.toLowerCase())||c.cpf?.includes(busca));
-  const abas = [["lista","📋 Clientes"],["vencimentos","📅 Venc."],["cobranca","🔔 Cobranças"],["quitados","✅ Quitados"],["relatorio","📊 Relatório"]];
-  const abasMenu = ["lista","vencimentos","cobranca","quitados","relatorio"];
+  const abas = [["lista","📋 Clientes"],["vencimentos","📅 Venc."],["cobranca","🔔 Cobranças"],["quitados","✅ Quitados"],["rapidos","⚡ Diário/Semanal"],["relatorio","📊 Relatório"]];
+  const abasMenu = ["lista","vencimentos","cobranca","quitados","rapidos","relatorio"];
 
   return (
     <div style={{minHeight:"100vh",background:"#1a1a2e",color:"#e2eaf8",fontFamily:"'DM Sans',sans-serif"}}>
@@ -676,7 +715,147 @@ export default function App() {
           );
         })()}
 
-        {/* ===== RELATÓRIO ===== */}
+        {/* ===== RAPIDOS ===== */}
+        {aba==="rapidos" && (
+          <div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <div style={{fontWeight:700,fontSize:15}}>⚡ Diário / Semanal</div>
+              <button onClick={()=>setMostrarFormRapido(!mostrarFormRapido)} style={btnPri}>+ Novo</button>
+            </div>
+
+            {/* Formulário novo */}
+            {mostrarFormRapido && (
+              <div style={{background:"#16213e",border:"1px solid #2a3550",borderRadius:12,padding:16,marginBottom:16}}>
+                <div style={{fontWeight:700,fontSize:14,marginBottom:14}}>Novo Cadastro</div>
+                <Grid2>
+                  <F label="Nome *" name="nome" value={novoRapidoForm.nome} onChange={e=>setNovoRapidoForm(f=>({...f,[e.target.name]:e.target.value}))}/>
+                  <F label="Telefone" name="telefone" value={novoRapidoForm.telefone} onChange={e=>setNovoRapidoForm(f=>({...f,[e.target.name]:e.target.value}))} ph="(00) 00000-0000"/>
+                  <F label="Referência - Nome" name="ref1_nome" value={novoRapidoForm.ref1_nome} onChange={e=>setNovoRapidoForm(f=>({...f,[e.target.name]:e.target.value}))}/>
+                  <F label="Referência - Tel" name="ref1_tel" value={novoRapidoForm.ref1_tel} onChange={e=>setNovoRapidoForm(f=>({...f,[e.target.name]:e.target.value}))}/>
+                  <F label="Valor Total (R$) *" name="capital" type="number" value={novoRapidoForm.capital} onChange={e=>setNovoRapidoForm(f=>({...f,[e.target.name]:e.target.value}))} ph="Ex: 20000"/>
+                  <F label="Valor da Parcela (R$) *" name="valor_parcela" type="number" value={novoRapidoForm.valor_parcela} onChange={e=>setNovoRapidoForm(f=>({...f,[e.target.name]:e.target.value}))} ph="Ex: 952"/>
+                </Grid2>
+                <div style={{margin:"12px 0"}}>
+                  <label style={lbl}>Frequência</label>
+                  <div style={{display:"flex",gap:8}}>
+                    {[["diario","📆 Diário"],["semanal","📅 Semanal"]].map(([v,t])=>(
+                      <div key={v} onClick={()=>setNovoRapidoForm(f=>({...f,frequencia:v}))} style={{flex:1,padding:10,borderRadius:8,cursor:"pointer",border:`2px solid ${novoRapidoForm.frequencia===v?"#f59e0b":"#2a3550"}`,background:novoRapidoForm.frequencia===v?"#f59e0b10":"#1a1a2e",fontWeight:700,fontSize:13,color:novoRapidoForm.frequencia===v?"#f59e0b":"#e2eaf8",textAlign:"center"}}>{t}</div>
+                    ))}
+                  </div>
+                </div>
+                {novoRapidoForm.frequencia==="semanal"&&<div style={{marginBottom:10}}><label style={lbl}>Dia da Semana</label><select name="dia_semana" value={novoRapidoForm.dia_semana} onChange={e=>setNovoRapidoForm(f=>({...f,[e.target.name]:e.target.value}))} style={inp}><option value="">Selecione</option>{["Segunda","Terça","Quarta","Quinta","Sexta","Sábado","Domingo"].map(d=><option key={d}>{d}</option>)}</select></div>}
+                <div style={{marginBottom:10}}><label style={lbl}>Obs</label><textarea name="obs" value={novoRapidoForm.obs} onChange={e=>setNovoRapidoForm(f=>({...f,[e.target.name]:e.target.value}))} style={{...inp,height:50,resize:"vertical"}}/></div>
+                {novoRapidoForm.capital&&novoRapidoForm.valor_parcela&&(
+                  <div style={{background:"#1a1a2e",borderRadius:8,padding:12,marginBottom:12,fontSize:12}}>
+                    <div style={{color:"#f59e0b",fontWeight:700,marginBottom:6}}>📊 Simulação</div>
+                    <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+                      <span>Total: <b style={{color:"#f59e0b"}}>{fmt(parseFloat(novoRapidoForm.capital))}</b></span>
+                      <span>Parcela: <b style={{color:"#3b82f6"}}>{fmt(parseFloat(novoRapidoForm.valor_parcela))}</b></span>
+                      <span>Qtd: <b style={{color:"#10b981"}}>{Math.ceil(parseFloat(novoRapidoForm.capital)/parseFloat(novoRapidoForm.valor_parcela))} pagamentos</b></span>
+                    </div>
+                  </div>
+                )}
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={()=>setMostrarFormRapido(false)} style={btnSec}>Cancelar</button>
+                  <button onClick={salvarRapido} disabled={salvando} style={{...btnPri,opacity:salvando?0.6:1}}>{salvando?"Salvando...":"✅ Cadastrar"}</button>
+                </div>
+              </div>
+            )}
+
+            {/* Lista */}
+            {rapidos.length===0&&!mostrarFormRapido
+              ?<div style={{textAlign:"center",padding:"60px 0",color:"#3a5a8a"}}><div style={{fontSize:40,marginBottom:10}}>⚡</div><div>Nenhum cadastro diário/semanal</div></div>
+              :<div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {rapidos.map(r=>{
+                  const quitado=r.capital_atual<=0;
+                  const pct=Math.round(((r.capital-r.capital_atual)/r.capital)*100);
+                  const qtdPagtos=Math.ceil(r.capital/r.valor_parcela);
+                  const pgtoFeitos=r.historico?.length||0;
+                  const isSelected=rapidoSel?.id===r.id;
+                  return(
+                    <div key={r.id} style={{background:"#16213e",border:`1px solid ${isSelected?"#f59e0b":"#2a3550"}`,borderRadius:12,padding:14}}>
+                      <div onClick={()=>setRapidoSel(isSelected?null:r)} style={{cursor:"pointer"}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                          <div>
+                            <div style={{fontWeight:700,fontSize:15}}>{r.nome}</div>
+                            <div style={{color:"#7a9cc8",fontSize:12}}>{r.telefone}</div>
+                            {r.ref1_nome&&<div style={{color:"#f59e0b",fontSize:11}}>📞 {r.ref1_nome} · {r.ref1_tel}</div>}
+                            <div style={{color:"#7a9cc8",fontSize:12,marginTop:2}}>{r.frequencia==="diario"?"📆 Diário":"📅 Semanal"}{r.dia_semana?` · ${r.dia_semana}`:""}</div>
+                          </div>
+                          <div style={{textAlign:"right"}}>
+                            <span style={{background:quitado?"#10b98118":"#f59e0b18",color:quitado?"#10b981":"#f59e0b",padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:700}}>{quitado?"✅ Quitado":`${pct}%`}</span>
+                            <div style={{marginTop:4}}>
+                              <button onClick={e=>{e.stopPropagation();const nome5=r.nome?.split(" ")[0];const msg=`Olá! O ${nome5} tem pagamento ${r.frequencia==="diario"?"diário":"semanal"} de ${fmt(r.valor_parcela)}. Saldo devedor: ${fmt(r.capital_atual)}. ${r.dia_semana?`Vence toda ${r.dia_semana}.`:""}`;abrirWhats(msg);}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:6,padding:"4px 8px",cursor:"pointer",fontWeight:700,fontSize:11}}>📲</button>
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{display:"flex",gap:14,marginBottom:8,flexWrap:"wrap"}}>
+                          <Chip label="Total" val={fmt(r.capital)} color="#f59e0b"/>
+                          <Chip label="Saldo" val={fmt(r.capital_atual)} color={quitado?"#10b981":"#ef4444"}/>
+                          <Chip label="Parcela" val={fmt(r.valor_parcela)} color="#3b82f6"/>
+                          <Chip label="Pagamentos" val={`${pgtoFeitos}/${qtdPagtos}`} color="#8b5cf6"/>
+                        </div>
+                        <div style={{background:"#1a1a2e",borderRadius:4,height:5,overflow:"hidden"}}>
+                          <div style={{height:"100%",width:`${Math.min(100,pct)}%`,background:quitado?"#10b981":"linear-gradient(90deg,#f59e0b,#ef4444)",borderRadius:4}}/>
+                        </div>
+                      </div>
+
+                      {/* Detalhe expandido */}
+                      {isSelected&&!quitado&&(
+                        <div style={{marginTop:14,borderTop:"1px solid #2a3550",paddingTop:14}}>
+                          <div style={{fontWeight:700,fontSize:13,marginBottom:10}}>💵 Registrar Pagamento</div>
+                          <div style={{display:"flex",gap:8,marginBottom:10}}>
+                            <button onClick={()=>setNovoPagRapido(p=>({...p,valor:r.valor_parcela.toFixed(2)}))} style={{flex:1,background:"#3b82f618",border:"1px solid #3b82f640",color:"#3b82f6",borderRadius:8,padding:"8px 6px",cursor:"pointer",fontWeight:700,fontSize:11,textAlign:"center"}}>
+                              <div style={{fontSize:10,marginBottom:2}}>📦 Parcela padrão</div>
+                              <div>{fmt(r.valor_parcela)}</div>
+                            </button>
+                            <button onClick={()=>setNovoPagRapido(p=>({...p,valor:r.capital_atual.toFixed(2)}))} style={{flex:1,background:"#10b98118",border:"1px solid #10b98140",color:"#10b981",borderRadius:8,padding:"8px 6px",cursor:"pointer",fontWeight:700,fontSize:11,textAlign:"center"}}>
+                              <div style={{fontSize:10,marginBottom:2}}>✅ Quitar tudo</div>
+                              <div>{fmt(r.capital_atual)}</div>
+                            </button>
+                          </div>
+                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 2fr",gap:8,marginBottom:10}}>
+                            <div><label style={lbl}>Valor (R$)</label><input type="number" value={novoPagRapido.valor} onChange={e=>setNovoPagRapido(p=>({...p,valor:e.target.value}))} style={inp} placeholder="0,00"/></div>
+                            <div><label style={lbl}>Data</label><input type="date" value={novoPagRapido.data} onChange={e=>setNovoPagRapido(p=>({...p,data:e.target.value}))} style={inp}/></div>
+                            <div><label style={lbl}>Obs</label><input value={novoPagRapido.obs} onChange={e=>setNovoPagRapido(p=>({...p,obs:e.target.value}))} style={inp} placeholder="Opcional..."/></div>
+                          </div>
+                          <button onClick={pagarRapido} disabled={salvando} style={{...btnPri,opacity:salvando?0.6:1}}>{salvando?"Salvando...":"Confirmar"}</button>
+                        </div>
+                      )}
+
+                      {/* Histórico */}
+                      {isSelected&&r.historico?.length>0&&(
+                        <div style={{marginTop:12,borderTop:"1px solid #2a3550",paddingTop:12}}>
+                          <div style={{fontWeight:700,fontSize:12,marginBottom:8}}>📅 Histórico</div>
+                          <div style={{overflowX:"auto"}}>
+                            <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+                              <thead><tr style={{borderBottom:"1px solid #2a3550"}}>
+                                {["#","Data","Valor","Saldo Anterior","Saldo Novo","Obs"].map(h=><th key={h} style={{textAlign:"left",padding:"5px 6px",color:"#7a9cc8",fontWeight:600,fontSize:10}}>{h}</th>)}
+                              </tr></thead>
+                              <tbody>
+                                {r.historico.map((h,i)=>(
+                                  <tr key={i} style={{borderBottom:"1px solid #1a1a2e"}}>
+                                    <td style={{padding:"6px 6px",color:"#7a9cc8",fontWeight:700}}>{i+1}</td>
+                                    <td style={{padding:"6px 6px",color:"#e2eaf8"}}>{fmtDate(h.data)}</td>
+                                    <td style={{padding:"6px 6px",fontWeight:700,color:"#10b981"}}>{fmt(h.valorPago)}</td>
+                                    <td style={{padding:"6px 6px",color:"#ef4444"}}>{fmt(h.capitalAntes)}</td>
+                                    <td style={{padding:"6px 6px",fontWeight:700,color:h.capitalDepois===0?"#10b981":"#e2eaf8"}}>{fmt(h.capitalDepois)}</td>
+                                    <td style={{padding:"6px 6px",color:"#7a9cc8"}}>{h.obs||"—"}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>}
+          </div>
+        )}
+
+        {/* ===== RELATÓRIO ===== */}}
         {aba==="relatorio" && (()=>{
           // Filtro de período
           const inicio = new Date(relDataInicio + "T00:00:00");
@@ -886,4 +1065,3 @@ const inp = {width:"100%",background:"#1f2b47",border:"1px solid #b8cef5",border
 const lbl = {display:"block",color:"#7a9cc8",fontSize:11,marginBottom:4,fontWeight:500};
 const btnPri = {background:"linear-gradient(135deg,#f59e0b,#ef4444)",color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontWeight:700,fontSize:13,cursor:"pointer"};
 const btnSec = {background:"#1f2b47",color:"#e2eaf8",border:"1px solid #b8cef5",borderRadius:8,padding:"8px 16px",fontWeight:600,fontSize:13,cursor:"pointer"};
-
