@@ -74,6 +74,10 @@ export default function App() {
   const [novoPag, setNovoPag] = useState({ valor:"", data:today(), obs:"", multa:"" });
   const [editandoPag, setEditandoPag] = useState(null);
   const [busca, setBusca] = useState("");
+  const [relPeriodo, setRelPeriodo] = useState("mes"); // mes | periodo
+  const hoje = new Date();
+  const [relDataInicio, setRelDataInicio] = useState(new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split("T")[0]);
+  const [relDataFim, setRelDataFim] = useState(hoje.toISOString().split("T")[0]);
   const [toast, setToast] = useState(null);
 
   const showToast = (msg, tipo="ok") => { setToast({msg,tipo}); setTimeout(()=>setToast(null),3000); };
@@ -186,8 +190,8 @@ export default function App() {
   };
 
   const filtrados = clientes.filter(c => c.nome?.toLowerCase().includes(busca.toLowerCase())||c.cpf?.includes(busca));
-  const abas = [["lista","📋 Clientes"],["vencimentos","📅 Venc."],["cobranca","🔔 Cobranças"],["quitados","✅ Quitados"]];
-  const abasMenu = ["lista","vencimentos","cobranca","quitados"];
+  const abas = [["lista","📋 Clientes"],["vencimentos","📅 Venc."],["cobranca","🔔 Cobranças"],["quitados","✅ Quitados"],["relatorio","📊 Relatório"]];
+  const abasMenu = ["lista","vencimentos","cobranca","quitados","relatorio"];
 
   return (
     <div style={{minHeight:"100vh",background:"#0d0f18",color:"#e2e8f0",fontFamily:"'DM Sans',sans-serif"}}>
@@ -614,6 +618,146 @@ export default function App() {
             </div>
           );
         })()}
+
+        {/* ===== RELATÓRIO ===== */}
+        {aba==="relatorio" && (()=>{
+          // Filtro de período
+          const inicio = new Date(relDataInicio + "T00:00:00");
+          const fim = new Date(relDataFim + "T23:59:59");
+
+          // Filtra pagamentos no período
+          let totalRecebido=0, totalJuros=0, totalAmort=0, totalMulta=0;
+          let totalQuitacoes=0, valorQuitacoes=0;
+          let totalEmprestimos=0, qtdEmprestimos=0;
+
+          emprestimos.forEach(e => {
+            // Empréstimos criados no período
+            if (e.criado_em) {
+              const dCriado = new Date(e.criado_em);
+              if (dCriado >= inicio && dCriado <= fim) {
+                totalEmprestimos += e.capital;
+                qtdEmprestimos++;
+              }
+            }
+            // Pagamentos no período
+            (e.historico||[]).forEach(h => {
+              if (!h.data) return;
+              const dPag = new Date(h.data + "T12:00:00");
+              if (dPag >= inicio && dPag <= fim) {
+                totalRecebido += h.valorPago||0;
+                totalJuros += h.juros||0;
+                totalAmort += h.abateCapital||0;
+                totalMulta += h.multa||0;
+              }
+            });
+            // Quitações no período
+            if (e.capital_atual<=0 && e.historico?.length>0) {
+              const ultimoPag = e.historico[e.historico.length-1];
+              if (ultimoPag?.data) {
+                const dQuit = new Date(ultimoPag.data + "T12:00:00");
+                if (dQuit >= inicio && dQuit <= fim) {
+                  totalQuitacoes++;
+                  valorQuitacoes += e.capital;
+                }
+              }
+            }
+          });
+
+          const cards = [
+            { label:"💰 Total Emprestado", val:fmt(totalEmprestimos), sub:`${qtdEmprestimos} operação(ões)`, color:"#f59e0b", bg:"#f59e0b" },
+            { label:"✅ Total Recebido", val:fmt(totalRecebido), sub:"juros + parcelas + multas", color:"#10b981", bg:"#10b981" },
+            { label:"📈 Juros Recebidos", val:fmt(totalJuros), sub:"pagamentos de só juros", color:"#3b82f6", bg:"#3b82f6" },
+            { label:"📦 Amortização", val:fmt(totalAmort), sub:"abate no capital", color:"#8b5cf6", bg:"#8b5cf6" },
+            { label:"⚠️ Multas", val:fmt(totalMulta), sub:"multas por atraso", color:"#ef4444", bg:"#ef4444" },
+            { label:"🏁 Quitações", val:fmt(valorQuitacoes), sub:`${totalQuitacoes} operação(ões) quitada(s)`, color:"#f97316", bg:"#f97316" },
+          ];
+
+          return (
+            <div>
+              <div style={{fontWeight:700,fontSize:15,marginBottom:16}}>📊 Relatório Financeiro</div>
+
+              {/* Seletor de período */}
+              <div style={{background:"#111320",border:"1px solid #1e2235",borderRadius:10,padding:14,marginBottom:20}}>
+                <div style={{display:"flex",gap:8,marginBottom:12}}>
+                  {[["mes","Mês Atual"],["periodo","Por Período"]].map(([v,t])=>(
+                    <button key={v} onClick={()=>{ setRelPeriodo(v); if(v==="mes"){const h=new Date();setRelDataInicio(new Date(h.getFullYear(),h.getMonth(),1).toISOString().split("T")[0]);setRelDataFim(h.toISOString().split("T")[0]);}}} style={{flex:1,padding:"8px 0",background:relPeriodo===v?"linear-gradient(135deg,#f59e0b,#ef4444)":"#1a1d2e",color:relPeriodo===v?"#fff":"#94a3b8",border:"none",borderRadius:8,fontWeight:700,fontSize:13,cursor:"pointer"}}>{t}</button>
+                  ))}
+                </div>
+                {relPeriodo==="periodo"&&(
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                    <div><label style={lbl}>Data Início</label><input type="date" value={relDataInicio} onChange={e=>setRelDataInicio(e.target.value)} style={inp}/></div>
+                    <div><label style={lbl}>Data Fim</label><input type="date" value={relDataFim} onChange={e=>setRelDataFim(e.target.value)} style={inp}/></div>
+                  </div>
+                )}
+                <div style={{color:"#64748b",fontSize:11,marginTop:8}}>Período: {fmtDate(relDataInicio)} até {fmtDate(relDataFim)}</div>
+              </div>
+
+              {/* Cards */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:20}}>
+                {cards.map(({label,val,sub,color,bg})=>(
+                  <div key={label} style={{background:"#111320",border:`1px solid ${bg}30`,borderLeft:`4px solid ${bg}`,borderRadius:10,padding:14}}>
+                    <div style={{color:"#64748b",fontSize:11,marginBottom:4}}>{label}</div>
+                    <div style={{fontWeight:800,fontSize:18,color,marginBottom:2}}>{val}</div>
+                    <div style={{color:"#475569",fontSize:11}}>{sub}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Saldo em aberto */}
+              <div style={{background:"#111320",border:"1px solid #1e2235",borderRadius:10,padding:14,marginBottom:16}}>
+                <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>📋 Situação Atual da Carteira</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+                  {[
+                    ["Saldo em aberto", fmt(emprestimos.filter(e=>e.capital_atual>0).reduce((s,e)=>s+e.capital_atual,0)), "#ef4444"],
+                    ["Operações ativas", emprestimos.filter(e=>e.capital_atual>0).length+" ops", "#3b82f6"],
+                    ["Inadimplentes", opsAlerta.filter(e=>statusVenc(e.dia_venc,e.historico)==="atrasado").length+" ops", "#f97316"],
+                  ].map(([l,v,color])=>(
+                    <div key={l} style={{textAlign:"center"}}>
+                      <div style={{color:"#64748b",fontSize:10,marginBottom:4}}>{l.toUpperCase()}</div>
+                      <div style={{fontWeight:800,fontSize:15,color}}>{v}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Detalhamento por operação no período */}
+              {(()=>{
+                const opsNoPeriodo = emprestimos.filter(e => (e.historico||[]).some(h => { if(!h.data) return false; const d=new Date(h.data+"T12:00:00"); return d>=inicio&&d<=fim; }));
+                if(opsNoPeriodo.length===0) return <div style={{color:"#475569",fontSize:13,textAlign:"center",padding:"20px 0"}}>Nenhuma movimentação no período selecionado</div>;
+                return (
+                  <div style={{background:"#111320",border:"1px solid #1e2235",borderRadius:10,padding:14}}>
+                    <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>🗂️ Movimentações no Período</div>
+                    <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                      {opsNoPeriodo.map(e=>{
+                        const c=getCliente(e.cliente_id);
+                        const pagsNoPeriodo=(e.historico||[]).filter(h=>{if(!h.data)return false;const d=new Date(h.data+"T12:00:00");return d>=inicio&&d<=fim;});
+                        const totalPags=pagsNoPeriodo.reduce((s,h)=>s+(h.valorPago||0),0);
+                        const totalJ=pagsNoPeriodo.reduce((s,h)=>s+(h.juros||0),0);
+                        const totalA=pagsNoPeriodo.reduce((s,h)=>s+(h.abateCapital||0),0);
+                        const totalM=pagsNoPeriodo.reduce((s,h)=>s+(h.multa||0),0);
+                        return(
+                          <div key={e.id} style={{background:"#0d0f18",borderRadius:8,padding:12}}>
+                            <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+                              <div style={{fontWeight:700,fontSize:13}}>{c?.nome}</div>
+                              <div style={{fontWeight:700,color:"#10b981",fontSize:13}}>{fmt(totalPags)}</div>
+                            </div>
+                            <div style={{display:"flex",gap:14,flexWrap:"wrap",fontSize:11}}>
+                              <span style={{color:"#3b82f6"}}>Juros: <b>{fmt(totalJ)}</b></span>
+                              <span style={{color:"#8b5cf6"}}>Amort: <b>{fmt(totalA)}</b></span>
+                              {totalM>0&&<span style={{color:"#ef4444"}}>Multa: <b>{fmt(totalM)}</b></span>}
+                              <span style={{color:"#64748b"}}>{pagsNoPeriodo.length} pgto(s)</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          );
+        })()}
+
       </main>
     </div>
   );
@@ -630,4 +774,3 @@ const inp = {width:"100%",background:"#1a1d2e",border:"1px solid #1e2235",border
 const lbl = {display:"block",color:"#94a3b8",fontSize:11,marginBottom:4,fontWeight:500};
 const btnPri = {background:"linear-gradient(135deg,#f59e0b,#ef4444)",color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontWeight:700,fontSize:13,cursor:"pointer"};
 const btnSec = {background:"#1a1d2e",color:"#e2e8f0",border:"1px solid #1e2235",borderRadius:8,padding:"8px 16px",fontWeight:600,fontSize:13,cursor:"pointer"};
-
