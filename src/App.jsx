@@ -2,6 +2,13 @@ import { useState, useEffect } from "react";
 
 const MEU_WHATS = "5511955509308";
 
+const abrirWhatsCliente = (telefone, msg) => {
+  const num = telefone ? telefone.replace(/\D/g, "") : null;
+  if (!num) { alert("Cliente sem número de telefone cadastrado."); return; }
+  const numFull = num.startsWith("55") ? num : "55"+num;
+  window.open(`https://wa.me/${numFull}?text=${encodeURIComponent(msg)}`, "_blank");
+};
+
 const abrirWhats = (msg) => {
   const url = `https://wa.me/${MEU_WHATS}?text=${encodeURIComponent(msg)}`;
   window.open(url, "_blank");
@@ -409,7 +416,7 @@ export default function App() {
                           <div style={{textAlign:"right"}}>
                             <div style={{fontWeight:800,fontSize:20,color:SC[tipo]}}>Dia {e.dia_venc}</div>
                             {tipo==="atrasado"&&<div style={{color:"#ef4444",fontSize:11,fontWeight:700}}>{atraso} dias</div>}
-                            <button onClick={ev=>{ev.stopPropagation();const cli=getCliente(e.cliente_id);const nome2=cli?.nome?.split(" ")[0]||cli?.nome;const juros2=fmt(minJuros(e.capital_atual,e.taxa));const saldo2b=fmt(e.capital_atual);const parc2=e.tipo==="parcelado"?(()=>{const pg=e.historico?.filter(h=>(h.abateCapital||0)>0).length||0;return `, parcela ${pg+1} de ${e.num_parcelas} no valor de ${fmt(pmt(e.capital,e.taxa,e.num_parcelas))}`;})():"";const msg=tipo==="atrasado"?`Olá! O ${nome2} está com pagamento em atraso há ${atraso} dia(s). Venceu no dia ${e.dia_venc}, deve ${juros2} de juros${parc2}. Saldo devedor: ${saldo2b}.`:tipo==="hoje"?`Olá! O ${nome2} vence hoje dia ${e.dia_venc}. Valor de juros: ${juros2}${parc2}. Saldo devedor: ${saldo2b}.`:`Olá! O ${nome2} vence em breve, no dia ${e.dia_venc}. Valor de juros: ${juros2}${parc2}. Saldo devedor: ${saldo2b}.`;abrirWhats(msg);}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontWeight:700,fontSize:11,marginTop:4}}>
+                            <button onClick={ev=>{ev.stopPropagation();const cli=getCliente(e.cliente_id);const nome2=cli?.nome?.split(" ")[0]||cli?.nome;const juros2=fmt(minJuros(e.capital_atual,e.taxa));const saldo2b=fmt(e.capital_atual);const parc2=e.tipo==="parcelado"?(()=>{const pg=e.historico?.filter(h=>(h.abateCapital||0)>0).length||0;return `, parcela ${pg+1} de ${e.num_parcelas} no valor de ${fmt(pmt(e.capital,e.taxa,e.num_parcelas))}`;})():"";const atraso2=diasAtraso(e.dia_venc);const msg=tipo==="atrasado"?`Olá ${nome2}, tudo bem? Passando para avisar que seu pagamento está em atraso há ${atraso2} dia(s). Venceu dia ${e.dia_venc}, valor de ${juros2} de juros${parc2}. Saldo devedor: ${saldo2b}. Podemos acertar?`:tipo==="hoje"?`Olá ${nome2}, tudo bem? Passando para lembrar que seu pagamento vence hoje dia ${e.dia_venc}. Valor de ${juros2}${parc2}. Saldo devedor: ${saldo2b}. Qualquer dúvida estou à disposição!`:`Olá ${nome2}, tudo bem? Seu pagamento vence em breve, no dia ${e.dia_venc}. Valor de ${juros2}${parc2}. Saldo devedor: ${saldo2b}.`;abrirWhatsCliente(cli?.telefone,msg);}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontWeight:700,fontSize:11,marginTop:4}}>
                               📲 WhatsApp
                             </button>
                           </div>
