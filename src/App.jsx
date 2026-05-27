@@ -71,7 +71,7 @@ export default function App() {
   const [novoClienteForm, setNovoClienteForm] = useState(emptyC);
   const [novoEmpForm, setNovoEmpForm] = useState(emptyE);
   const [modoForm, setModoForm] = useState(null); // "cliente" | "emprestimo"
-  const [novoPag, setNovoPag] = useState({ valor:"", data:today(), obs:"" });
+  const [novoPag, setNovoPag] = useState({ valor:"", data:today(), obs:"", multa:"" });
   const [editandoPag, setEditandoPag] = useState(null);
   const [busca, setBusca] = useState("");
   const [toast, setToast] = useState(null);
@@ -136,7 +136,8 @@ export default function App() {
     setSalvando(true);
     try {
       let historico = [...(empSel.historico||[])];
-      const entrada = { data:novoPag.data, valorPago:valor, obs:novoPag.obs };
+      const multa = parseFloat(novoPag.multa)||0;
+      const entrada = { data:novoPag.data, valorPago:valor, obs:novoPag.obs, multa };
       if (editandoPag!==null) historico[editandoPag]=entrada;
       else historico.push(entrada);
       let capitalRecalc = empSel.capital;
@@ -146,7 +147,7 @@ export default function App() {
         historico[i]={...h,capitalAntes:capitalRecalc+abate,juros:j,abateCapital:abate,capitalDepois:capitalRecalc};
       }
       await db.emprestimos.atualizar(empSel.id, { capital_atual:capitalRecalc, historico });
-      setNovoPag({valor:"",data:today(),obs:""}); setEditandoPag(null);
+      setNovoPag({valor:"",data:today(),obs:"",multa:""}); setEditandoPag(null);
       showToast(editandoPag!==null?"Editado!":"Pagamento registrado!");
       await carregar();
       const esAtualizados = await db.emprestimos.listar();
@@ -175,7 +176,7 @@ export default function App() {
 
   const abrirCliente = (c) => { setClienteSel(c); setStep(2); setAba("detalhe"); };
   const abrirEmprestimo = (e) => { setEmpSel(e); setStep(3); };
-  const voltarParaCliente = () => { setStep(2); setEmpSel(null); setNovoPag({valor:"",data:today(),obs:""}); setEditandoPag(null); };
+  const voltarParaCliente = () => { setStep(2); setEmpSel(null); setNovoPag({valor:"",data:today(),obs:"",multa:""}); setEditandoPag(null); };
 
   const simular = () => {
     const capital=parseFloat(novoEmpForm.capital)||0, taxa=parseFloat(novoEmpForm.taxa)||0, n=parseInt(novoEmpForm.num_parcelas)||1;
@@ -522,7 +523,7 @@ export default function App() {
                   <div style={{fontWeight:700,marginBottom:10,fontSize:13,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                     {editandoPag!==null?"✏️ Editar":"💵 Registrar Pagamento"}
                     {e.tipo==="parcelado"&&<span style={{background:"#8b5cf620",color:"#8b5cf6",padding:"2px 8px",borderRadius:20,fontSize:11}}>Parcela {parcelasPagas+1}/{totalParcelas}</span>}
-                    {editandoPag!==null&&<button onClick={()=>{setEditandoPag(null);setNovoPag({valor:"",data:today(),obs:""}); }} style={{marginLeft:"auto",background:"none",border:"none",color:"#64748b",cursor:"pointer",fontSize:12}}>cancelar</button>}
+                    {editandoPag!==null&&<button onClick={()=>{setEditandoPag(null);setNovoPag({valor:"",data:today(),obs:"",multa:""}); }} style={{marginLeft:"auto",background:"none",border:"none",color:"#64748b",cursor:"pointer",fontSize:12}}>cancelar</button>}
                   </div>
                   <div style={{display:"flex",gap:8,marginBottom:12}}>
                     <button onClick={()=>setNovoPag(p=>({...p,valor:jAtual.toFixed(2)}))} style={{flex:1,background:"#f59e0b18",border:"1px solid #f59e0b40",color:"#f59e0b",borderRadius:8,padding:"8px 6px",cursor:"pointer",fontWeight:700,fontSize:11,textAlign:"center"}}>
@@ -542,6 +543,24 @@ export default function App() {
                     <div><label style={lbl}>Data</label><input type="date" value={novoPag.data} onChange={ev=>setNovoPag(p=>({...p,data:ev.target.value}))} style={inp}/></div>
                     <div><label style={lbl}>Obs</label><input value={novoPag.obs} onChange={ev=>setNovoPag(p=>({...p,obs:ev.target.value}))} style={inp} placeholder="Opcional..."/></div>
                   </div>
+                  {/* Multa por atraso */}
+                  {statusVenc(e.dia_venc,e.historico)==="atrasado"&&(
+                    <div style={{background:"#ef444410",border:"1px solid #ef444430",borderRadius:8,padding:12,marginBottom:10}}>
+                      <div style={{color:"#ef4444",fontWeight:700,fontSize:12,marginBottom:8}}>⚠️ Multa por Atraso</div>
+                      <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
+                        <div style={{flex:1}}>
+                          <label style={lbl}>Valor da Multa (R$)</label>
+                          <input type="number" value={novoPag.multa} onChange={ev=>setNovoPag(p=>({...p,multa:ev.target.value}))} style={inp} placeholder="0,00"/>
+                        </div>
+                        <div style={{color:"#64748b",fontSize:11,paddingBottom:8}}>Opcional — separado do pagamento</div>
+                      </div>
+                      {novoPag.multa&&parseFloat(novoPag.multa)>0&&(
+                        <div style={{color:"#ef4444",fontSize:12,marginTop:6,fontWeight:600}}>
+                          Total com multa: {fmt((parseFloat(novoPag.valor)||0)+parseFloat(novoPag.multa))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {novoPag.valor&&parseFloat(novoPag.valor)>0&&(()=>{
                     const vp=parseFloat(novoPag.valor),j=jAtual,abate=Math.max(0,vp-j);
                     return<div style={{background:"#0d0f18",borderRadius:6,padding:8,marginBottom:8,fontSize:11,display:"flex",gap:12,flexWrap:"wrap"}}>
@@ -563,7 +582,7 @@ export default function App() {
                   :<div style={{overflowX:"auto"}}>
                     <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
                       <thead><tr style={{borderBottom:"1px solid #1e2235"}}>
-                        {["#","Data","Valor","Juros","Abate","Saldo","Tipo","Obs",""].map(h=><th key={h} style={{textAlign:"left",padding:"6px 5px",color:"#94a3b8",fontWeight:600,fontSize:10}}>{h}</th>)}
+                        {["#","Data","Valor","Juros","Abate","Multa","Saldo","Tipo","Obs",""].map(h=><th key={h} style={{textAlign:"left",padding:"6px 5px",color:"#94a3b8",fontWeight:600,fontSize:10}}>{h}</th>)}
                       </tr></thead>
                       <tbody>
                         {e.historico.map((h,i)=>{
@@ -577,6 +596,7 @@ export default function App() {
                               <td style={{padding:"7px 5px",fontWeight:700,color:"#10b981"}}>{fmt(h.valorPago)}</td>
                               <td style={{padding:"7px 5px",color:"#f59e0b"}}>{fmt(h.juros)}</td>
                               <td style={{padding:"7px 5px",color:"#3b82f6"}}>{fmt(h.abateCapital)}</td>
+                              <td style={{padding:"7px 5px",color:(h.multa||0)>0?"#ef4444":"#475569",fontWeight:(h.multa||0)>0?700:400}}>{(h.multa||0)>0?fmt(h.multa):"—"}</td>
                               <td style={{padding:"7px 5px",fontWeight:700,color:h.capitalDepois===0?"#10b981":"#e2e8f0"}}>{fmt(h.capitalDepois)}</td>
                               <td style={{padding:"7px 5px"}}><span style={{background:tipoColor+"20",color:tipoColor,padding:"2px 5px",borderRadius:8,fontSize:10,fontWeight:700}}>{tipoLabel}</span></td>
                               <td style={{padding:"7px 5px",color:"#64748b",maxWidth:70,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{h.obs||"—"}</td>
@@ -610,3 +630,4 @@ const inp = {width:"100%",background:"#1a1d2e",border:"1px solid #1e2235",border
 const lbl = {display:"block",color:"#94a3b8",fontSize:11,marginBottom:4,fontWeight:500};
 const btnPri = {background:"linear-gradient(135deg,#f59e0b,#ef4444)",color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontWeight:700,fontSize:13,cursor:"pointer"};
 const btnSec = {background:"#1a1d2e",color:"#e2e8f0",border:"1px solid #1e2235",borderRadius:8,padding:"8px 16px",fontWeight:600,fontSize:13,cursor:"pointer"};
+
