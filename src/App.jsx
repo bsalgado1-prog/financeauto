@@ -534,7 +534,13 @@ export default function App() {
                             const tipoColor = h.abateCapital>0?"#10b981":"#f59e0b";
                             return (
                               <tr key={i} style={{borderBottom:"1px solid #0d0f18",background:editandoPag===i?"#f59e0b10":"transparent"}}>
-                                <td style={{padding:"7px 6px",color:"#94a3b8",fontWeight:700}}>{c.tipo==="parcelado"?`${i+1}/${totalParcelas}`:i+1}</td>
+                                <td style={{padding:"7px 6px",color:"#94a3b8",fontWeight:700}}>
+                                  {c.tipo==="parcelado"
+                                    ? (h.abateCapital>0
+                                        ? (() => { const n = c.historico.slice(0,i+1).filter(x=>x.abateCapital>0).length; return `${n}/${totalParcelas}`; })()
+                                        : <span style={{color:"#f59e0b",fontSize:10}}>J</span>)
+                                    : i+1}
+                                </td>
                                 <td style={{padding:"7px 6px",color:"#e2e8f0"}}>{fmtDate(h.data)}</td>
                                 <td style={{padding:"7px 6px",fontWeight:700,color:"#10b981"}}>{fmt(h.valorPago)}</td>
                                 <td style={{padding:"7px 6px",color:"#f59e0b"}}>{fmt(h.juros)}</td>
