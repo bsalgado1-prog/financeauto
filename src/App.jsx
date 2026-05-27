@@ -1,5 +1,45 @@
 import { useState, useEffect } from "react";
 
+const MEU_WHATS = "5511955509308";
+
+const abrirWhats = (msg) => {
+  const url = `https://wa.me/${MEU_WHATS}?text=${encodeURIComponent(msg)}`;
+  window.open(url, "_blank");
+};
+
+const statusCliente = (emprestimosDoCliente) => {
+  if (!emprestimosDoCliente || emprestimosDoCliente.length === 0) return "sem_ops";
+  const ativos = emprestimosDoCliente.filter(e => e.capital_atual > 0);
+  if (ativos.length === 0) return "quitado";
+  // Conta quantas vezes atrasou (pagou depois do dia)
+  let totalAtrasos = 0;
+  ativos.forEach(e => {
+    (e.historico||[]).forEach(h => {
+      if (h.data && e.dia_venc) {
+        const dPag = new Date(h.data + "T12:00:00");
+        const dVenc = new Date(dPag.getFullYear(), dPag.getMonth(), parseInt(e.dia_venc));
+        if (dPag > dVenc) totalAtrasos++;
+      }
+    });
+  });
+  const estaAtrasado = ativos.some(e => statusVenc(e.dia_venc, e.historico) === "atrasado");
+  if (estaAtrasado && totalAtrasos >= 3) return "mau_pagador";
+  if (estaAtrasado) return "inadimplente";
+  if (totalAtrasos >= 3) return "atrasa_sempre";
+  if (totalAtrasos > 0) return "atrasa_as_vezes";
+  return "em_dia";
+};
+
+const statusClienteInfo = {
+  em_dia: { label: "🟢 Em dia", color: "#10b981", bg: "#10b98118" },
+  atrasa_as_vezes: { label: "🟡 Atrasa às vezes", color: "#f59e0b", bg: "#f59e0b18" },
+  atrasa_sempre: { label: "🟠 Atrasa sempre", color: "#f97316", bg: "#f97316 18" },
+  inadimplente: { label: "🔴 Inadimplente", color: "#ef4444", bg: "#ef444418" },
+  mau_pagador: { label: "⚫ Mau pagador", color: "#94a3b8", bg: "#94a3b818" },
+  quitado: { label: "✅ Quitado", color: "#10b981", bg: "#10b98118" },
+  sem_ops: { label: "—", color: "#64748b", bg: "#64748b18" },
+};
+
 const SURL = "https://oshwhirmwrzfpzuxaois.supabase.co";
 const SKEY = "sb_publishable_xPWGqf-IoTgb5aOF_FBmdA_hpYCqaHU";
 
@@ -250,10 +290,16 @@ export default function App() {
                         {temAlerta&&<span style={{background:"#ef444418",color:"#ef4444",padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700}}>⚠️ Alerta</span>}
                       </div>
                     </div>
-                    <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
+                    <div style={{display:"flex",gap:14,flexWrap:"wrap",marginBottom:8}}>
                       <Chip label="Saldo total" val={fmt(saldo)} color={saldo>0?"#ef4444":"#10b981"}/>
                       <Chip label="Operações" val={`${emps.length} total`} color="#8b5cf6"/>
                       {ativos.length>0&&<Chip label="Vencimentos" val={ativos.map(e=>`Dia ${e.dia_venc}`).join(" · ")} color="#f59e0b"/>}
+                    </div>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      {(()=>{ const st=statusCliente(emps); const info=statusClienteInfo[st]; return <span style={{background:info.bg,color:info.color,padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:700}}>{info.label}</span>; })()}
+                      <button onClick={ev=>{ev.stopPropagation();const saldo2=totalSaldo(c.id);const msg=`📋 *Cliente:* ${c.nome}\n📞 *Tel:* ${c.telefone}\n💰 *Saldo total:* ${fmt(saldo2)}\n📅 *Vencimentos:* ${empsAtivos(c.id).map(e=>`Dia ${e.dia_venc}`).join(", ")||"—"}\n\n_FinanceAuto_`;abrirWhats(msg);}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:8,padding:"5px 12px",cursor:"pointer",fontWeight:700,fontSize:12}}>
+                        📲 WhatsApp
+                      </button>
                     </div>
                   </div>
                 );
@@ -323,6 +369,9 @@ export default function App() {
                           <div style={{textAlign:"right"}}>
                             <div style={{fontWeight:800,fontSize:20,color:SC[tipo]}}>Dia {e.dia_venc}</div>
                             {tipo==="atrasado"&&<div style={{color:"#ef4444",fontSize:11,fontWeight:700}}>{atraso} dias</div>}
+                            <button onClick={ev=>{ev.stopPropagation();const cli=getCliente(e.cliente_id);const msg=`🔔 *Cobrança*\n👤 *Cliente:* ${cli?.nome}\n📞 *Tel:* ${cli?.telefone}\n💰 *Saldo:* ${fmt(e.capital_atual)}\n💸 *Pagar:* ${fmt(minJuros(e.capital_atual,e.taxa))}\n📅 *Vencimento:* Dia ${e.dia_venc}${tipo==="atrasado"?`\n⚠️ *Atraso:* ${atraso} dia(s)`:""}\n\n_FinanceAuto_`;abrirWhats(msg);}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontWeight:700,fontSize:11,marginTop:4}}>
+                              📲 WhatsApp
+                            </button>
                           </div>
                         </div>
                       );
@@ -494,11 +543,18 @@ export default function App() {
           return(
             <div>
               <div style={{background:"#111320",border:"1px solid #1e2235",borderRadius:10,padding:12,marginBottom:14}}>
-                <div style={{fontWeight:800,fontSize:16}}>{c.nome}</div>
-                <div style={{color:"#64748b",fontSize:12,marginBottom:4}}>{c.telefone}</div>
-                <div style={{color:"#94a3b8",fontSize:12}}>Operação {opIdx} · {e.tipo==="minimo"?"Só juros":"Parcelado"} · Dia {e.dia_venc}</div>
-                {e.tipo==="parcelado"&&<div style={{color:"#8b5cf6",fontSize:12}}>Parcelas: <b>{parcelasPagas}</b> pagas · <b>{Math.max(0,(totalParcelas||0)-parcelasPagas)}</b> em aberto</div>}
-                {!quitado&&<div style={{color:SC[st],fontSize:12,fontWeight:600}}>{SL[st]}{st==="atrasado"?` (${atraso} dias)`:""}</div>}
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                  <div>
+                    <div style={{fontWeight:800,fontSize:16}}>{c.nome}</div>
+                    <div style={{color:"#64748b",fontSize:12,marginBottom:4}}>{c.telefone}</div>
+                    <div style={{color:"#94a3b8",fontSize:12}}>Operação {opIdx} · {e.tipo==="minimo"?"Só juros":"Parcelado"} · Dia {e.dia_venc}</div>
+                    {e.tipo==="parcelado"&&<div style={{color:"#8b5cf6",fontSize:12}}>Parcelas: <b>{parcelasPagas}</b> pagas · <b>{Math.max(0,(totalParcelas||0)-parcelasPagas)}</b> em aberto</div>}
+                    {!quitado&&<div style={{color:SC[st],fontSize:12,fontWeight:600}}>{SL[st]}{st==="atrasado"?` (${atraso} dias)`:""}</div>}
+                  </div>
+                  <button onClick={()=>{const pagas2=e.historico?.filter(h=>(h.abateCapital||0)>0).length||0;const msg=`📋 *Operação ${opIdx}*\n👤 *Cliente:* ${c.nome}\n📞 *Tel:* ${c.telefone}\n💰 *Capital:* ${fmt(e.capital)}\n📉 *Saldo:* ${fmt(e.capital_atual)}\n💸 *Mínimo:* ${fmt(jAtual)}\n📅 *Vencimento:* Dia ${e.dia_venc}\n📊 *Status:* ${SL[st]}${e.tipo==="parcelado"?`\n📦 *Parcelas:* ${pagas2}/${e.num_parcelas}`:""}${st==="atrasado"?`\n⚠️ *Atraso:* ${atraso} dia(s)`:""}\n\n_FinanceAuto_`;abrirWhats(msg);}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:8,padding:"8px 12px",cursor:"pointer",fontWeight:700,fontSize:12,whiteSpace:"nowrap"}}>
+                    📲 WhatsApp
+                  </button>
+                </div>
               </div>
 
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))",gap:8,marginBottom:12}}>
@@ -717,6 +773,22 @@ export default function App() {
                       <div style={{fontWeight:800,fontSize:15,color}}>{v}</div>
                     </div>
                   ))}
+                </div>
+              </div>
+
+              {/* Status dos clientes */}
+              <div style={{background:"#111320",border:"1px solid #1e2235",borderRadius:10,padding:14,marginBottom:16}}>
+                <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>👥 Status dos Clientes</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                  {Object.entries(statusClienteInfo).filter(([k])=>k!=="sem_ops"&&k!=="quitado").map(([key,info])=>{
+                    const qtd=clientes.filter(c=>statusCliente(empsDoCliente(c.id))===key).length;
+                    return(
+                      <div key={key} style={{background:"#0d0f18",borderRadius:8,padding:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                        <span style={{color:info.color,fontWeight:600,fontSize:12}}>{info.label}</span>
+                        <span style={{fontWeight:800,fontSize:16,color:info.color}}>{qtd}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
