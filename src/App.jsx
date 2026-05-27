@@ -40,11 +40,23 @@ const proximoVencimento = (diaVenc) => {
   return d;
 };
 
-const statusVencimento = (diaVenc) => {
+const pagouEsseMes = (historico) => {
+  if (!historico || historico.length === 0) return false;
+  const hoje = new Date();
+  const mesAtual = hoje.getMonth();
+  const anoAtual = hoje.getFullYear();
+  return historico.some(h => {
+    if (!h.data) return false;
+    const d = new Date(h.data + "T12:00:00");
+    return d.getMonth() === mesAtual && d.getFullYear() === anoAtual;
+  });
+};
+
+const statusVencimento = (diaVenc, historico) => {
   if (!diaVenc) return "sem_data";
+  if (pagouEsseMes(historico)) return "ok";
   const dia = parseInt(diaVenc);
   const hoje = todayObj();
-  const diaHoje = hoje.getDate();
   const mesAtual = new Date(hoje.getFullYear(), hoje.getMonth(), dia);
   mesAtual.setHours(0,0,0,0);
   const diff = Math.round((mesAtual - hoje) / (1000*60*60*24));
@@ -198,11 +210,11 @@ export default function App() {
   // Clientes que vencem hoje ou estão atrasados
   const clientesAlerta = clientes.filter(c => {
     if (c.capital_atual <= 0) return false;
-    const s = statusVencimento(c.dia_venc);
+    const s = statusVencimento(c.dia_venc, c.historico);
     return s === "hoje" || s === "atrasado" || s === "proximo";
   }).sort((a,b) => {
     const ordem = { atrasado:0, hoje:1, proximo:2 };
-    return (ordem[statusVencimento(a.dia_venc)]||3)-(ordem[statusVencimento(b.dia_venc)]||3);
+    return (ordem[statusVencimento(a.dia_venc, a.historico)]||3)-(ordem[statusVencimento(b.dia_venc, b.historico)]||3);
   });
 
   const filtrados = clientes.filter(c =>
@@ -257,7 +269,7 @@ export default function App() {
                 {filtrados.map(c=>{
                   const quitado=c.capital_atual<=0;
                   const pct=Math.round(((c.capital-c.capital_atual)/c.capital)*100);
-                  const st=statusVencimento(c.dia_venc);
+                  const st=statusVencimento(c.dia_venc, c.historico);
                   return (
                     <div key={c.id} onClick={()=>abrirDetalhe(c)} style={{background:"#111320",border:"1px solid #1e2235",borderRadius:12,padding:16,cursor:"pointer"}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
@@ -295,14 +307,14 @@ export default function App() {
             ) : (
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
                 {clientesOrdenadosVenc.filter(c=>c.capital_atual>0).map(c=>{
-                  const st=statusVencimento(c.dia_venc);
+                  const st=statusVencimento(c.dia_venc, c.historico);
                   const atraso=diasAtraso(c.dia_venc);
                   return (
                     <div key={c.id} onClick={()=>abrirDetalhe(c)} style={{background:"#111320",border:`1px solid ${statusColor[st]}40`,borderLeft:`4px solid ${statusColor[st]}`,borderRadius:10,padding:14,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                       <div>
-                        <div style={{fontWeight:700,fontSize:14}}>{c.nome}</div>
-                        <div style={{color:"#64748b",fontSize:12}}>{c.telefone}</div>
-                        <div style={{color:"#94a3b8",fontSize:12,marginTop:4}}>Saldo: <b style={{color:"#ef4444"}}>{fmt(c.capital_atual)}</b> · Mínimo: <b style={{color:"#f59e0b"}}>{fmt(minJuros(c.capital_atual,c.taxa))}</b></div>
+                        <div style={{fontWeight:700,fontSize:15}}>{c.nome.split(" ")[0]}</div>
+                        {c.ref1_nome&&<div style={{color:"#f59e0b",fontSize:12}}>📞 {c.ref1_nome} · {c.ref1_tel}</div>}
+                        <div style={{color:"#94a3b8",fontSize:12,marginTop:2}}>Saldo: <b style={{color:"#ef4444"}}>{fmt(c.capital_atual)}</b> · Min: <b style={{color:"#3b82f6"}}>{fmt(minJuros(c.capital_atual,c.taxa))}</b></div>
                       </div>
                       <div style={{textAlign:"right"}}>
                         <div style={{fontWeight:800,fontSize:22,color:statusColor[st]}}>Dia {c.dia_venc||"—"}</div>
@@ -330,28 +342,28 @@ export default function App() {
             ) : (
               <div style={{display:"flex",flexDirection:"column",gap:10}}>
                 {/* Atrasados */}
-                {clientesAlerta.filter(c=>statusVencimento(c.dia_venc)==="atrasado").length>0 && (
+                {clientesAlerta.filter(c=>statusVencimento(c.dia_venc, c.historico)==="atrasado").length>0 && (
                   <div>
                     <div style={{color:"#ef4444",fontWeight:700,fontSize:12,textTransform:"uppercase",marginBottom:8,letterSpacing:"0.5px"}}>🔴 Em Atraso</div>
-                    {clientesAlerta.filter(c=>statusVencimento(c.dia_venc)==="atrasado").map(c=>(
+                    {clientesAlerta.filter(c=>statusVencimento(c.dia_venc, c.historico)==="atrasado").map(c=>(
                       <ClienteAlertaCard key={c.id} c={c} onClick={()=>abrirDetalhe(c)} minJuros={minJuros} statusColor={statusColor} diasAtraso={diasAtraso}/>
                     ))}
                   </div>
                 )}
                 {/* Hoje */}
-                {clientesAlerta.filter(c=>statusVencimento(c.dia_venc)==="hoje").length>0 && (
+                {clientesAlerta.filter(c=>statusVencimento(c.dia_venc, c.historico)==="hoje").length>0 && (
                   <div style={{marginTop:8}}>
                     <div style={{color:"#f59e0b",fontWeight:700,fontSize:12,textTransform:"uppercase",marginBottom:8,letterSpacing:"0.5px"}}>🟡 Vencem Hoje</div>
-                    {clientesAlerta.filter(c=>statusVencimento(c.dia_venc)==="hoje").map(c=>(
+                    {clientesAlerta.filter(c=>statusVencimento(c.dia_venc, c.historico)==="hoje").map(c=>(
                       <ClienteAlertaCard key={c.id} c={c} onClick={()=>abrirDetalhe(c)} minJuros={minJuros} statusColor={statusColor} diasAtraso={diasAtraso}/>
                     ))}
                   </div>
                 )}
                 {/* Próximos */}
-                {clientesAlerta.filter(c=>statusVencimento(c.dia_venc)==="proximo").length>0 && (
+                {clientesAlerta.filter(c=>statusVencimento(c.dia_venc, c.historico)==="proximo").length>0 && (
                   <div style={{marginTop:8}}>
                     <div style={{color:"#f97316",fontWeight:700,fontSize:12,textTransform:"uppercase",marginBottom:8,letterSpacing:"0.5px"}}>🟠 Vencem em Breve</div>
-                    {clientesAlerta.filter(c=>statusVencimento(c.dia_venc)==="proximo").map(c=>(
+                    {clientesAlerta.filter(c=>statusVencimento(c.dia_venc, c.historico)==="proximo").map(c=>(
                       <ClienteAlertaCard key={c.id} c={c} onClick={()=>abrirDetalhe(c)} minJuros={minJuros} statusColor={statusColor} diasAtraso={diasAtraso}/>
                     ))}
                   </div>
@@ -436,7 +448,7 @@ export default function App() {
           const quitado = c.capital_atual<=0;
           const jAtual = minJuros(c.capital_atual, c.taxa);
           const pct = Math.round(((c.capital-c.capital_atual)/c.capital)*100);
-          const st = statusVencimento(c.dia_venc);
+          const st = statusVencimento(c.dia_venc, c.historico);
           const atraso = diasAtraso(c.dia_venc);
           return (
             <div>
@@ -547,7 +559,7 @@ export default function App() {
 }
 
 function ClienteAlertaCard({c,onClick,minJuros,statusColor,diasAtraso}) {
-  const st = statusVencimento(c.dia_venc);
+  const st = statusVencimento(c.dia_venc, c.historico);
   const atraso = diasAtraso(c.dia_venc);
   return (
     <div onClick={onClick} style={{background:"#111320",border:`1px solid ${statusColor[st]}40`,borderLeft:`4px solid ${statusColor[st]}`,borderRadius:10,padding:14,cursor:"pointer",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
