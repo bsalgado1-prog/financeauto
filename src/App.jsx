@@ -98,7 +98,7 @@ const SC = { hoje:"#f59e0b", atrasado:"#ef4444", proximo:"#f97316", ok:"#10b981"
 const SL = { hoje:"Vence hoje", atrasado:"Atrasado", proximo:"Em breve", ok:"Em dia", sem_data:"Sem data" };
 const ESTADOS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
 const emptyC = { nome:"",cpf:"",rg:"",nascimento:"",telefone:"",email:"",endereco:"",cidade:"",estado:"",cep:"",ref1_nome:"",ref1_tel:"",ref1_par:"",ref2_nome:"",ref2_tel:"",ref2_par:"" };
-const emptyE = { capital:"",taxa:"",tipo:"minimo",num_parcelas:"1",data_op:today(),dia_venc:"",obs:"",cliente_tipo:"novo",saldo_atual:"" };
+const emptyE = { capital:"",taxa:"",tipo:"minimo",num_parcelas:"1",data_op:today(),dia_venc:"",obs:"",cliente_tipo:"novo",saldo_atual:"",frequencia_pag:"mensal" };
 
 export default function App() {
   const [aba, setAba] = useState("lista");
@@ -173,7 +173,7 @@ export default function App() {
       const capital = parseFloat(novoEmpForm.capital);
       const isAntigo = (novoEmpForm.cliente_tipo||"novo") === "antigo";
       const saldoAtual = isAntigo && novoEmpForm.saldo_atual ? parseFloat(novoEmpForm.saldo_atual) : capital;
-      await db.emprestimos.criar({ cliente_id: clienteSel.id, capital, taxa:parseFloat(novoEmpForm.taxa), tipo:novoEmpForm.tipo, num_parcelas:parseInt(novoEmpForm.num_parcelas)||1, data_op:novoEmpForm.data_op, dia_venc:novoEmpForm.dia_venc, obs:novoEmpForm.obs, capital_atual:saldoAtual, historico:[] });
+      await db.emprestimos.criar({ cliente_id: clienteSel.id, capital, taxa:parseFloat(novoEmpForm.taxa), tipo:novoEmpForm.tipo, num_parcelas:parseInt(novoEmpForm.num_parcelas)||1, data_op:novoEmpForm.data_op, dia_venc:novoEmpForm.dia_venc, obs:novoEmpForm.obs, capital_atual:saldoAtual, historico:[], frequencia_pag:novoEmpForm.frequencia_pag||"mensal" });
       setNovoEmpForm(emptyE); setModoForm(null);
       showToast("Operação cadastrada!"); await carregar();
       setStep(2);
@@ -496,7 +496,7 @@ export default function App() {
                     return(
                       <div key={e.id} onClick={()=>abrirEmprestimo(e)} style={{background:"#16213e",border:`1px solid ${quitado?"#10b98130":"#1e2235"}`,borderLeft:`4px solid ${quitado?"#10b981":SC[st]}`,borderRadius:10,padding:14,cursor:"pointer"}}>
                         <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
-                          <div style={{fontWeight:700,fontSize:13,color:"#7a9cc8"}}>Operação {i+1} · {e.tipo==="minimo"?"Só juros":"Parcelado"} · Dia {e.dia_venc}</div>
+                          <div style={{fontWeight:700,fontSize:13,color:"#7a9cc8"}}>Operação {i+1} · {e.tipo==="minimo"?"Só juros":"Parcelado"} · {e.frequencia_pag==="semanal"?"📆 Semanal":e.frequencia_pag==="diario"?"☀️ Diário":"📅 Mensal"} · Dia {e.dia_venc}</div>
                           <span style={{background:quitado?"#10b98118":SC[st]+"18",color:quitado?"#10b981":SC[st],padding:"2px 8px",borderRadius:20,fontSize:11,fontWeight:700}}>{quitado?"✅ Quitado":SL[st]}</span>
                         </div>
                         <div style={{display:"flex",gap:14,marginBottom:8,flexWrap:"wrap"}}>
@@ -532,6 +532,16 @@ export default function App() {
                   </div>
                 </div>
                 {novoEmpForm.tipo==="parcelado"&&<div style={{marginBottom:10}}><label style={lbl}>Nº Parcelas</label><input type="number" name="num_parcelas" value={novoEmpForm.num_parcelas} onChange={e=>setNovoEmpForm(f=>({...f,[e.target.name]:e.target.value}))} style={inp} min="1"/></div>}
+
+                {/* Frequência */}
+                <div style={{margin:"10px 0"}}>
+                  <label style={lbl}>Frequência de Pagamento</label>
+                  <div style={{display:"flex",gap:8}}>
+                    {[["mensal","📅 Mensal"],["semanal","📆 Semanal"],["diario","☀️ Diário"]].map(([v,t])=>(
+                      <div key={v} onClick={()=>setNovoEmpForm(f=>({...f,frequencia_pag:v}))} style={{flex:1,padding:8,borderRadius:8,cursor:"pointer",border:`2px solid ${(novoEmpForm.frequencia_pag||"mensal")===v?"#f59e0b":"#2a3550"}`,background:(novoEmpForm.frequencia_pag||"mensal")===v?"#f59e0b10":"#1a1a2e",fontWeight:700,fontSize:12,color:(novoEmpForm.frequencia_pag||"mensal")===v?"#f59e0b":"#e2eaf8",textAlign:"center"}}>{t}</div>
+                    ))}
+                  </div>
+                </div>
                 {/* Tipo de cliente */}
                 <div style={{margin:"12px 0"}}>
                   <label style={lbl}>Tipo de Cliente</label>
@@ -587,7 +597,7 @@ export default function App() {
                   <div>
                     <div style={{fontWeight:800,fontSize:16}}>{c.nome}</div>
                     <div style={{color:"#7a9cc8",fontSize:12,marginBottom:4}}>{c.telefone}</div>
-                    <div style={{color:"#7a9cc8",fontSize:12}}>Operação {opIdx} · {e.tipo==="minimo"?"Só juros":"Parcelado"} · Dia {e.dia_venc}</div>
+                    <div style={{color:"#7a9cc8",fontSize:12}}>Operação {opIdx} · {e.tipo==="minimo"?"Só juros":"Parcelado"} · {e.frequencia_pag==="semanal"?"📆 Semanal":e.frequencia_pag==="diario"?"☀️ Diário":"📅 Mensal"} · Dia {e.dia_venc}</div>
                     {e.tipo==="parcelado"&&<div style={{color:"#8b5cf6",fontSize:12}}>Parcelas: <b>{parcelasPagas}</b> pagas · <b>{Math.max(0,(totalParcelas||0)-parcelasPagas)}</b> em aberto</div>}
                     {!quitado&&<div style={{color:SC[st],fontSize:12,fontWeight:600}}>{SL[st]}{st==="atrasado"?` (${atraso} dias)`:""}</div>}
                   </div>
