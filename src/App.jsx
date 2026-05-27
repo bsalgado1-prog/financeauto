@@ -57,7 +57,7 @@ const SC = { hoje:"#f59e0b", atrasado:"#ef4444", proximo:"#f97316", ok:"#10b981"
 const SL = { hoje:"Vence hoje", atrasado:"Atrasado", proximo:"Em breve", ok:"Em dia", sem_data:"Sem data" };
 const ESTADOS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
 const emptyC = { nome:"",cpf:"",rg:"",nascimento:"",telefone:"",email:"",endereco:"",cidade:"",estado:"",cep:"",ref1_nome:"",ref1_tel:"",ref1_par:"",ref2_nome:"",ref2_tel:"",ref2_par:"" };
-const emptyE = { capital:"",taxa:"",tipo:"minimo",num_parcelas:"1",data_op:today(),dia_venc:"",obs:"" };
+const emptyE = { capital:"",taxa:"",tipo:"minimo",num_parcelas:"1",data_op:today(),dia_venc:"",obs:"",cliente_tipo:"novo",saldo_atual:"" };
 
 export default function App() {
   const [aba, setAba] = useState("lista");
@@ -120,7 +120,9 @@ export default function App() {
     setSalvando(true);
     try {
       const capital = parseFloat(novoEmpForm.capital);
-      await db.emprestimos.criar({ cliente_id: clienteSel.id, capital, taxa:parseFloat(novoEmpForm.taxa), tipo:novoEmpForm.tipo, num_parcelas:parseInt(novoEmpForm.num_parcelas)||1, data_op:novoEmpForm.data_op, dia_venc:novoEmpForm.dia_venc, obs:novoEmpForm.obs, capital_atual:capital, historico:[] });
+      const isAntigo = (novoEmpForm.cliente_tipo||"novo") === "antigo";
+      const saldoAtual = isAntigo && novoEmpForm.saldo_atual ? parseFloat(novoEmpForm.saldo_atual) : capital;
+      await db.emprestimos.criar({ cliente_id: clienteSel.id, capital, taxa:parseFloat(novoEmpForm.taxa), tipo:novoEmpForm.tipo, num_parcelas:parseInt(novoEmpForm.num_parcelas)||1, data_op:novoEmpForm.data_op, dia_venc:novoEmpForm.dia_venc, obs:novoEmpForm.obs, capital_atual:saldoAtual, historico:[] });
       setNovoEmpForm(emptyE); setModoForm(null);
       showToast("Operação cadastrada!"); await carregar();
       setStep(2);
@@ -436,6 +438,25 @@ export default function App() {
                   </div>
                 </div>
                 {novoEmpForm.tipo==="parcelado"&&<div style={{marginBottom:10}}><label style={lbl}>Nº Parcelas</label><input type="number" name="num_parcelas" value={novoEmpForm.num_parcelas} onChange={e=>setNovoEmpForm(f=>({...f,[e.target.name]:e.target.value}))} style={inp} min="1"/></div>}
+                {/* Tipo de cliente */}
+                <div style={{margin:"12px 0"}}>
+                  <label style={lbl}>Tipo de Cliente</label>
+                  <div style={{display:"flex",gap:8}}>
+                    {[["novo","🆕 Novo","Empréstimo começa agora"],["antigo","🕐 Antigo","Já tem saldo em aberto"]].map(([v,t,d])=>(
+                      <div key={v} onClick={()=>setNovoEmpForm(f=>({...f,cliente_tipo:v,saldo_atual:v==="novo"?f.capital:f.saldo_atual}))} style={{flex:1,padding:10,borderRadius:8,cursor:"pointer",border:`2px solid ${(novoEmpForm.cliente_tipo||"novo")===v?"#f59e0b":"#1e2235"}`,background:(novoEmpForm.cliente_tipo||"novo")===v?"#f59e0b10":"#0d0f18"}}>
+                        <div style={{fontWeight:700,fontSize:13,color:(novoEmpForm.cliente_tipo||"novo")===v?"#f59e0b":"#e2e8f0"}}>{t}</div>
+                        <div style={{fontSize:11,color:"#64748b",marginTop:2}}>{d}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {(novoEmpForm.cliente_tipo||"novo")==="antigo"&&(
+                  <div style={{background:"#f59e0b10",border:"1px solid #f59e0b30",borderRadius:8,padding:12,marginBottom:12}}>
+                    <div style={{color:"#f59e0b",fontWeight:700,fontSize:12,marginBottom:8}}>🕐 Saldo Atual do Cliente</div>
+                    <F label="Saldo devedor atual (R$) *" name="saldo_atual" type="number" value={novoEmpForm.saldo_atual||""} onChange={e=>setNovoEmpForm(f=>({...f,[e.target.name]:e.target.value}))} ph="Quanto o cliente ainda deve hoje"/>
+                    <div style={{color:"#64748b",fontSize:11,marginTop:6}}>O histórico anterior não é necessário. O sistema começa a partir deste saldo.</div>
+                  </div>
+                )}
                 <div style={{marginBottom:10}}><label style={lbl}>Obs</label><textarea name="obs" value={novoEmpForm.obs} onChange={e=>setNovoEmpForm(f=>({...f,[e.target.name]:e.target.value}))} style={{...inp,height:50,resize:"vertical"}}/></div>
                 {(()=>{const sim=simular();if(!sim)return null;return(
                   <div style={{background:"#0d0f18",borderRadius:8,padding:12,marginBottom:12}}>
