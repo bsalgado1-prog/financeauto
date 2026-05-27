@@ -439,7 +439,7 @@ export default function App() {
           const atraso = diasAtraso(c.dia_venc);
           // Parcelas para modo parcelado
           const totalParcelas = c.tipo==="parcelado" ? c.num_parcelas : null;
-          const parcelasPagas = c.historico?.length || 0;
+          const parcelasPagas = c.historico?.filter(h => (h.abateCapital||0) > 0).length || 0;
           const valorParcela = c.tipo==="parcelado" ? pmt(c.capital, c.taxa, c.num_parcelas) : null;
 
           return (
