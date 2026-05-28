@@ -534,7 +534,7 @@ export default function App() {
     const byName = (a,b) => nomeTomador(a).localeCompare(nomeTomador(b));
     if(tipo==="az") return sorted.sort((a,b)=>{const d=byName(a,b);return d!==0?d:(parseInt(a.dia_venc)||99)-(parseInt(b.dia_venc)||99);});
     if(tipo==="za") return sorted.sort((a,b)=>{const d=byName(b,a);return d!==0?d:(parseInt(a.dia_venc)||99)-(parseInt(b.dia_venc)||99);});
-    if(tipo==="dia") return sorted.sort((a,b)=>(parseInt(a.dia_venc)||99)-(parseInt(b.dia_venc)||99));
+    if(tipo==="dia") return sorted.sort((a,b)=>{const d=(parseInt(a.dia_venc)||99)-(parseInt(b.dia_venc)||99);if(d!==0)return d;return nomeTomador(a).localeCompare(nomeTomador(b));});
     if(tipo==="capital_desc") return sorted.sort((a,b)=>b.capital_atual-a.capital_atual||byName(a,b));
     if(tipo==="capital_asc") return sorted.sort((a,b)=>a.capital_atual-b.capital_atual||byName(a,b));
     if(tipo==="juros_desc") return sorted.sort((a,b)=>minJuros(b.capital_atual,b.taxa)-minJuros(a.capital_atual,a.taxa)||byName(a,b));
