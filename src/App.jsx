@@ -530,13 +530,14 @@ export default function App() {
 
   const sortOps = (ops, tipo) => {
     const sorted = [...ops];
-    if(tipo==="az") return sorted.sort((a,b)=>{const ca=getCliente(a.cliente_id),cb=getCliente(b.cliente_id);const diff=(ca?.nome||"").localeCompare(cb?.nome||"");if(diff!==0)return diff;return(parseInt(a.dia_venc)||99)-(parseInt(b.dia_venc)||99);});
-    if(tipo==="za") return sorted.sort((a,b)=>{const ca=getCliente(a.cliente_id),cb=getCliente(b.cliente_id);return(cb?.nome||"").localeCompare(ca?.nome||"");});
-    if(tipo==="dia") return sorted.sort((a,b)=>{const diff=(parseInt(a.dia_venc)||99)-(parseInt(b.dia_venc)||99);if(diff!==0)return diff;const ca=getCliente(a.cliente_id),cb=getCliente(b.cliente_id);return(ca?.nome||"").localeCompare(cb?.nome||"");});
-    if(tipo==="capital_desc") return sorted.sort((a,b)=>b.capital_atual-a.capital_atual);
-    if(tipo==="capital_asc") return sorted.sort((a,b)=>a.capital_atual-b.capital_atual);
-    if(tipo==="juros_desc") return sorted.sort((a,b)=>minJuros(b.capital_atual,b.taxa)-minJuros(a.capital_atual,a.taxa));
-    if(tipo==="status") return sorted.sort((a,b)=>{const o={atrasado:0,hoje:1,proximo:2,ok:3,sem_data:4};return(o[statusVenc(a.dia_venc,a.historico)]||3)-(o[statusVenc(b.dia_venc,b.historico)]||3);});
+    const byName = (a,b) => {const ca=getCliente(a.cliente_id),cb=getCliente(b.cliente_id);return(ca?.nome||"").localeCompare(cb?.nome||"");};
+    if(tipo==="az") return sorted.sort((a,b)=>{const d=byName(a,b);return d!==0?d:(parseInt(a.dia_venc)||99)-(parseInt(b.dia_venc)||99);});
+    if(tipo==="za") return sorted.sort((a,b)=>{const d=byName(b,a);return d!==0?d:(parseInt(a.dia_venc)||99)-(parseInt(b.dia_venc)||99);});
+    if(tipo==="dia") return sorted.sort((a,b)=>{const d=(parseInt(a.dia_venc)||99)-(parseInt(b.dia_venc)||99);return d!==0?d:byName(a,b);});
+    if(tipo==="capital_desc") return sorted.sort((a,b)=>b.capital_atual-a.capital_atual||byName(a,b));
+    if(tipo==="capital_asc") return sorted.sort((a,b)=>a.capital_atual-b.capital_atual||byName(a,b));
+    if(tipo==="juros_desc") return sorted.sort((a,b)=>minJuros(b.capital_atual,b.taxa)-minJuros(a.capital_atual,a.taxa)||byName(a,b));
+    if(tipo==="status") return sorted.sort((a,b)=>{const o={atrasado:0,hoje:1,proximo:2,ok:3,sem_data:4};const d=(o[statusVenc(a.dia_venc,a.historico)]||3)-(o[statusVenc(b.dia_venc,b.historico)]||3);return d!==0?d:byName(a,b);});
     return sorted;
   };
 
