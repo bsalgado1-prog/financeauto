@@ -530,9 +530,9 @@ export default function App() {
 
   const sortOps = (ops, tipo) => {
     const sorted = [...ops];
-    if(tipo==="az") return sorted.sort((a,b)=>{const ca=getCliente(a.cliente_id),cb=getCliente(b.cliente_id);return(ca?.nome||"").localeCompare(cb?.nome||"");});
+    if(tipo==="az") return sorted.sort((a,b)=>{const ca=getCliente(a.cliente_id),cb=getCliente(b.cliente_id);const diff=(ca?.nome||"").localeCompare(cb?.nome||"");if(diff!==0)return diff;return(parseInt(a.dia_venc)||99)-(parseInt(b.dia_venc)||99);});
     if(tipo==="za") return sorted.sort((a,b)=>{const ca=getCliente(a.cliente_id),cb=getCliente(b.cliente_id);return(cb?.nome||"").localeCompare(ca?.nome||"");});
-    if(tipo==="dia") return sorted.sort((a,b)=>(parseInt(a.dia_venc)||99)-(parseInt(b.dia_venc)||99));
+    if(tipo==="dia") return sorted.sort((a,b)=>{const diff=(parseInt(a.dia_venc)||99)-(parseInt(b.dia_venc)||99);if(diff!==0)return diff;const ca=getCliente(a.cliente_id),cb=getCliente(b.cliente_id);return(ca?.nome||"").localeCompare(cb?.nome||"");});
     if(tipo==="capital_desc") return sorted.sort((a,b)=>b.capital_atual-a.capital_atual);
     if(tipo==="capital_asc") return sorted.sort((a,b)=>a.capital_atual-b.capital_atual);
     if(tipo==="juros_desc") return sorted.sort((a,b)=>minJuros(b.capital_atual,b.taxa)-minJuros(a.capital_atual,a.taxa));
