@@ -113,6 +113,12 @@ export default function App() {
   const [relInicio, setRelInicio] = useState(new Date(hoje.getFullYear(),hoje.getMonth(),1).toISOString().split("T")[0]);
   const [relFim, setRelFim] = useState(hoje.toISOString().split("T")[0]);
   const [relStatusAberto, setRelStatusAberto] = useState(null);
+  // Anotações e contatos
+  const [anotacaoTexto, setAnotacaoTexto] = useState("");
+  const [contatoTipo, setContatoTipo] = useState("ligacao");
+  const [contatoObs, setContatoObs] = useState("");
+  const [mostrarContatos, setMostrarContatos] = useState(false);
+  const [mostrarAnotacoes, setMostrarAnotacoes] = useState(false);
 
   const T = tema==="claro" ? {
     bg:"#f0f4ff", card:"#ffffff", card2:"#e8f0fe", border:"#c0d0f0", text:"#1a2a4a", text2:"#4a6080", text3:"#7a90b0", header:"#1a56db", inp:"#f8fbff", btn:"#dce8fd", btnText:"#1a2a4a"
@@ -212,6 +218,35 @@ export default function App() {
     } catch(e){showToast("Erro.","erro");} finally{setSalvando(false);}
   };
 
+  const salvarAnotacao = async () => {
+    if(!anotacaoTexto.trim()) return;
+    setSalvando(true);
+    try {
+      const anotacoes = [...(clienteSel.anotacoes||[]), {texto:anotacaoTexto.trim(), data:today(), hora:new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}];
+      await db.clientes.atualizar(clienteSel.id, {anotacoes});
+      setAnotacaoTexto("");
+      showToast("Anotação salva!");
+      await carregar();
+      const cs = await db.clientes.listar();
+      setClientes(cs||[]);
+      setClienteSel(cs.find(x=>x.id===clienteSel.id)||null);
+    } catch(e){showToast("Erro.","erro");} finally{setSalvando(false);}
+  };
+
+  const salvarContato = async () => {
+    setSalvando(true);
+    try {
+      const tiposLabel = {ligacao:"📞 Ligação", whatsapp:"💬 WhatsApp", visita:"🏠 Visita", outro:"📝 Outro"};
+      const contatos = [...(clienteSel.contatos||[]), {tipo:contatoTipo, label:tiposLabel[contatoTipo], obs:contatoObs, data:today(), hora:new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}];
+      await db.clientes.atualizar(clienteSel.id, {contatos});
+      setContatoObs(""); showToast("Contato registrado!");
+      await carregar();
+      const cs = await db.clientes.listar();
+      setClientes(cs||[]);
+      setClienteSel(cs.find(x=>x.id===clienteSel.id)||null);
+    } catch(e){showToast("Erro.","erro");} finally{setSalvando(false);}
+  };
+
   const excluirCliente = async (c) => {
     if(!window.confirm(`Excluir o cliente ${c.nome} e todas as operações? Esta ação não pode ser desfeita.`)) return;
     setSalvando(true);
@@ -281,6 +316,52 @@ export default function App() {
     if(!c||!t) return null;
     if(simTipo==="minimo"){const min=minJuros(c,t);return{min,total:c+min,tipo:"minimo"};}
     const p=pmt(c,t,n); return{parcela:p,total:p*n,juros:p*n-c,n,tipo:"parcelado"};
+  };
+
+  // Projeção de recebimentos
+  const projecao = (dias) => {
+    const hoje2 = new Date(); hoje2.setHours(0,0,0,0);
+    const limite = new Date(hoje2); limite.setDate(limite.getDate()+dias);
+    let total = 0;
+    opsAtivas.forEach(e => {
+      const dia = parseInt(e.dia_venc);
+      if(!dia) return;
+      let d = new Date(hoje2.getFullYear(), hoje2.getMonth(), dia);
+      if(d < hoje2) d.setMonth(d.getMonth()+1);
+      while(d <= limite) {
+        if(!pagouEsseMes(e.historico) || d.getMonth()!==hoje2.getMonth()) {
+          total += minJuros(e.capital_atual, e.taxa);
+        }
+        d.setMonth(d.getMonth()+1);
+      }
+    });
+    return total;
+  };
+
+  // Clientes sem pagamento
+  const semPagamentoHaDias = (dias) => {
+    const limite = new Date(); limite.setDate(limite.getDate()-dias);
+    return clientes.filter(c => {
+      const ativos2 = empsAtivos(c.id);
+      if(ativos2.length===0) return false;
+      const todosEmps = empsCliente(c.id);
+      const ultimoPag = todosEmps.flatMap(e=>e.historico||[]).sort((a,b)=>new Date(b.data)-new Date(a.data))[0];
+      if(!ultimoPag) return true;
+      return new Date(ultimoPag.data+"T12:00:00") < limite;
+    });
+  };
+
+  // Resumo semanal
+  const resumoSemanal = () => {
+    const hoje2 = new Date(); hoje2.setHours(0,0,0,0);
+    const diasSemana = [];
+    for(let i=0;i<7;i++){
+      const d = new Date(hoje2); d.setDate(d.getDate()+i);
+      const dia = d.getDate();
+      const ops = opsAtivas.filter(e=>parseInt(e.dia_venc)===dia);
+      if(ops.length>0) diasSemana.push({data:d, dia, ops, total:ops.reduce((s,e)=>s+minJuros(e.capital_atual,e.taxa),0)});
+    }
+    return diasSemana;
   };
 
   const abas = [["inicio","🏠"],["lista","👥"],["vencimentos","📅"],["cobranca","🔔"],["quitados","✅"],["rapidos","⚡"],["relatorio","📊"]];
@@ -419,6 +500,63 @@ export default function App() {
                 })}
               </div>
             )}
+
+            {/* Projeção de recebimentos */}
+            <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:10,padding:14,marginBottom:16}}>
+              <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>📈 Projeção de Recebimentos</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+                {[[30,"30 dias","#3b82f6"],[60,"60 dias","#8b5cf6"],[90,"90 dias","#f59e0b"]].map(([d,label,color])=>(
+                  <div key={d} style={{background:T.card2,borderRadius:8,padding:12,textAlign:"center"}}>
+                    <div style={{color:T.text2,fontSize:10,marginBottom:4}}>{label.toUpperCase()}</div>
+                    <div style={{fontWeight:800,fontSize:15,color}}>{fmt(projecao(d))}</div>
+                    <div style={{color:T.text3,fontSize:10,marginTop:2}}>se todos pagarem</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Resumo semanal */}
+            {(()=>{const semana=resumoSemanal();if(semana.length===0)return null;return(
+              <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:10,padding:14,marginBottom:16}}>
+                <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>📅 Vencimentos desta semana</div>
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {semana.map(({data,dia,ops,total})=>(
+                    <div key={dia} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 10px",background:T.card2,borderRadius:8}}>
+                      <div>
+                        <div style={{fontWeight:700,fontSize:13}}>{data.toLocaleDateString("pt-BR",{weekday:"short",day:"numeric",month:"short"})}</div>
+                        <div style={{color:T.text2,fontSize:11}}>{ops.length} cliente(s)</div>
+                      </div>
+                      <div style={{fontWeight:800,fontSize:14,color:"#f59e0b"}}>{fmt(total)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );})()}
+
+            {/* Sem pagamento */}
+            {(()=>{const semPag30=semPagamentoHaDias(30);if(semPag30.length===0)return null;return(
+              <div style={{background:T.card,border:"1px solid #ef444440",borderRadius:10,padding:14,marginBottom:16}}>
+                <div style={{fontWeight:700,fontSize:13,color:"#ef4444",marginBottom:12}}>⚠️ Sem pagamento há mais de 30 dias ({semPag30.length})</div>
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {semPag30.slice(0,5).map(c=>{
+                    const emps2=empsAtivos(c.id);
+                    return(
+                      <div key={c.id} onClick={()=>{setClienteSel(c);setStep(2);setAba("detalhe");}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 10px",background:T.card2,borderRadius:8,cursor:"pointer"}}>
+                        <div>
+                          <div style={{fontWeight:700,fontSize:13}}>{c.nome}</div>
+                          <div style={{color:T.text2,fontSize:11}}>{c.telefone}</div>
+                        </div>
+                        <div style={{textAlign:"right"}}>
+                          <div style={{fontWeight:700,color:"#ef4444",fontSize:12}}>{fmt(emps2.reduce((s,e)=>s+e.capital_atual,0))}</div>
+                          <button onClick={ev=>{ev.stopPropagation();const n=primeiroNome(c.nome);abrirWhatsCliente(c.telefone,`Olá ${n}, tudo bem? Passando para verificar sobre seu pagamento que está em aberto. Podemos acertar?`);}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:6,padding:"3px 8px",cursor:"pointer",fontWeight:700,fontSize:10,marginTop:4}}>📲</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {semPag30.length>5&&<div style={{color:T.text3,fontSize:12,textAlign:"center"}}>+{semPag30.length-5} mais</div>}
+                </div>
+              </div>
+            );})()}
 
             {/* Simulador */}
             <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:10,padding:14}}>
@@ -720,6 +858,62 @@ export default function App() {
                 </div>);
               })}
             </div>}
+
+            {/* Anotações */}
+            <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:10,padding:14,marginBottom:12}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:mostrarAnotacoes?12:0}}>
+                <div style={{fontWeight:700,fontSize:13}}>📝 Anotações ({clienteSel.anotacoes?.length||0})</div>
+                <button onClick={()=>setMostrarAnotacoes(!mostrarAnotacoes)} style={{background:"none",border:"none",color:"#f59e0b",cursor:"pointer",fontSize:12}}>{mostrarAnotacoes?"▲ Fechar":"▼ Ver"}</button>
+              </div>
+              {mostrarAnotacoes&&(
+                <div>
+                  <div style={{display:"flex",gap:8,marginBottom:10}}>
+                    <input value={anotacaoTexto} onChange={e=>setAnotacaoTexto(e.target.value)} placeholder="Digite uma anotação..." style={{...inp(T),flex:1}} onKeyDown={e=>e.key==="Enter"&&salvarAnotacao()}/>
+                    <button onClick={salvarAnotacao} disabled={salvando} style={{...btnP}}>+</button>
+                  </div>
+                  {(clienteSel.anotacoes||[]).length===0?<div style={{color:T.text3,fontSize:12,textAlign:"center",padding:"8px 0"}}>Nenhuma anotação</div>
+                  :<div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    {[...(clienteSel.anotacoes||[])].reverse().map((a,i)=>(
+                      <div key={i} style={{background:T.card2,borderRadius:8,padding:10}}>
+                        <div style={{color:T.text,fontSize:13}}>{a.texto}</div>
+                        <div style={{color:T.text3,fontSize:10,marginTop:4}}>{fmtDate(a.data)} às {a.hora}</div>
+                      </div>
+                    ))}
+                  </div>}
+                </div>
+              )}
+            </div>
+
+            {/* Histórico de contatos */}
+            <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:10,padding:14,marginBottom:12}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:mostrarContatos?12:0}}>
+                <div style={{fontWeight:700,fontSize:13}}>📞 Contatos ({clienteSel.contatos?.length||0})</div>
+                <button onClick={()=>setMostrarContatos(!mostrarContatos)} style={{background:"none",border:"none",color:"#f59e0b",cursor:"pointer",fontSize:12}}>{mostrarContatos?"▲ Fechar":"▼ Ver"}</button>
+              </div>
+              {mostrarContatos&&(
+                <div>
+                  <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap"}}>
+                    {[["ligacao","📞"],["whatsapp","💬"],["visita","🏠"],["outro","📝"]].map(([v,icon])=>(
+                      <div key={v} onClick={()=>setContatoTipo(v)} style={{padding:"6px 12px",borderRadius:8,cursor:"pointer",border:`2px solid ${contatoTipo===v?"#f59e0b":T.border}`,background:contatoTipo===v?"#f59e0b10":T.card2,fontWeight:700,fontSize:12,color:contatoTipo===v?"#f59e0b":T.text}}>{icon}</div>
+                    ))}
+                    <input value={contatoObs} onChange={e=>setContatoObs(e.target.value)} placeholder="Observação..." style={{...inp(T),flex:1}}/>
+                    <button onClick={salvarContato} disabled={salvando} style={{...btnP}}>+</button>
+                  </div>
+                  {(clienteSel.contatos||[]).length===0?<div style={{color:T.text3,fontSize:12,textAlign:"center",padding:"8px 0"}}>Nenhum contato registrado</div>
+                  :<div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    {[...(clienteSel.contatos||[])].reverse().map((c2,i)=>(
+                      <div key={i} style={{background:T.card2,borderRadius:8,padding:10,display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                        <div>
+                          <div style={{fontWeight:700,fontSize:13}}>{c2.label}</div>
+                          {c2.obs&&<div style={{color:T.text,fontSize:12,marginTop:2}}>{c2.obs}</div>}
+                          <div style={{color:T.text3,fontSize:10,marginTop:4}}>{fmtDate(c2.data)} às {c2.hora}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>}
+                </div>
+              )}
+            </div>
 
             {modoForm==="emprestimo"&&(
               <div style={{background:T.card,border:"1px solid #f59e0b40",borderRadius:12,padding:16,marginTop:14}}>
