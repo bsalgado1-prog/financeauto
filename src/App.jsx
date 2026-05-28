@@ -790,7 +790,7 @@ export default function App() {
                         <Chip label="Saldo" val={fmt(saldo)} color={saldo>0?"#ef4444":"#10b981"} T={T}/>
                         <Chip label="Juros/mês" val={fmt(ativos.reduce((s,e)=>s+minJuros(e.capital_atual,e.taxa),0))} color="#10b981" T={T}/>
                         <Chip label="Ops" val={`${ativos.length}/${emps.length}`} color="#8b5cf6" T={T}/>
-                        {ativos.length>0&&<Chip label="Venc." val={ativos.map(e=>`Dia ${e.dia_venc}`).join("·")} color="#f59e0b" T={T}/>}
+                        {ativos.length>0&&<Chip label="Venc." val={`${ativos.length} vencimento${ativos.length>1?"s":""}`} color="#f59e0b" T={T}/>}
                       </div>
                       <div style={{display:"flex",gap:6}}>
                         <button onClick={ev=>{ev.stopPropagation();editarCliente(c);}} style={{background:T.card2,border:`1px solid ${T.border}`,color:"#f59e0b",borderRadius:6,padding:"5px 8px",cursor:"pointer",fontSize:11}}>✏️</button>
