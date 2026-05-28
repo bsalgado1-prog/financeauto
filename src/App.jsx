@@ -113,6 +113,7 @@ export default function App() {
   const [relInicio, setRelInicio] = useState(new Date(hoje.getFullYear(),hoje.getMonth(),1).toISOString().split("T")[0]);
   const [relFim, setRelFim] = useState(hoje.toISOString().split("T")[0]);
   const [relStatusAberto, setRelStatusAberto] = useState(null);
+  const [graficoMeses, setGraficoMeses] = useState(6);
   // Anotações e contatos
   const [anotacaoTexto, setAnotacaoTexto] = useState("");
   const [contatoTipo, setContatoTipo] = useState("ligacao");
@@ -316,6 +317,71 @@ export default function App() {
     if(!c||!t) return null;
     if(simTipo==="minimo"){const min=minJuros(c,t);return{min,total:c+min,tipo:"minimo"};}
     const p=pmt(c,t,n); return{parcela:p,total:p*n,juros:p*n-c,n,tipo:"parcelado"};
+  };
+
+  // Extrato do cliente em HTML para impressão
+  const gerarExtrato = (c) => {
+    const emps2 = empsCliente(c.id);
+    const totalSaldo2 = saldoTotal(c.id);
+    const linhasPag = emps2.flatMap((e,ei) => (e.historico||[]).map((h,i) => ({...h, opIdx:ei+1, empTipo:e.tipo, empTaxa:e.taxa, empCapital:e.capital})));
+    linhasPag.sort((a,b) => new Date(a.data)-new Date(b.data));
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Extrato - ${c.nome}</title>
+    <style>body{font-family:Arial,sans-serif;margin:30px;color:#222}h1{font-size:18px;margin-bottom:4px}h2{font-size:14px;color:#555;margin-bottom:20px}.info{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;font-size:12px}.info div{background:#f5f5f5;padding:8px;border-radius:4px}table{width:100%;border-collapse:collapse;font-size:11px}th{background:#222;color:#fff;padding:8px;text-align:left}td{padding:7px 8px;border-bottom:1px solid #eee}.total{background:#f5f5f5;font-weight:bold}@media print{button{display:none}}</style></head>
+    <body>
+    <h1>💰 FinanceAuto — Extrato do Cliente</h1>
+    <h2>${c.nome}</h2>
+    <div class="info">
+      <div><b>CPF:</b> ${c.cpf||"—"}</div>
+      <div><b>Telefone:</b> ${c.telefone||"—"}</div>
+      <div><b>Referência:</b> ${c.ref1_nome?c.ref1_nome+" · "+c.ref1_tel:"—"}</div>
+      <div><b>Saldo total:</b> ${fmt(totalSaldo2)}</div>
+    </div>
+    ${emps2.map((e,ei)=>`
+      <h3 style="font-size:13px;margin:16px 0 8px">Operação ${ei+1} — ${e.tipo==="minimo"?"Só Juros":"Parcelado"} — Capital: ${fmt(e.capital)} — Taxa: ${e.taxa}% — Dia ${e.dia_venc}</h3>
+      <table><tr><th>#</th><th>Data</th><th>Valor Pago</th><th>Juros</th><th>Amortização</th><th>Multa</th><th>Saldo</th></tr>
+      ${(e.historico||[]).map((h,i)=>`<tr><td>${i+1}</td><td>${fmtDate(h.data)}</td><td>${fmt(h.valorPago)}</td><td>${fmt(h.juros)}</td><td>${fmt(h.abateCapital)}</td><td>${(h.multa||0)>0?fmt(h.multa):"—"}</td><td>${fmt(h.capitalDepois)}</td></tr>`).join("")}
+      <tr class="total"><td colspan="2">Saldo atual</td><td colspan="5">${fmt(e.capital_atual)}</td></tr></table>
+    `).join("")}
+    <p style="margin-top:20px;font-size:10px;color:#999">Gerado em ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR")}</p>
+    <button onclick="window.print()" style="margin-top:10px;padding:8px 16px;background:#222;color:#fff;border:none;border-radius:6px;cursor:pointer">🖨️ Imprimir</button>
+    </body></html>`;
+    const w = window.open("","_blank");
+    w.document.write(html);
+    w.document.close();
+  };
+
+  // Dados gráfico mensal
+  const dadosGrafico = (nMeses) => {
+    const meses = [];
+    const hoje2 = new Date();
+    for(let i=nMeses-1;i>=0;i--){
+      const d = new Date(hoje2.getFullYear(), hoje2.getMonth()-i, 1);
+      const fim = new Date(d.getFullYear(), d.getMonth()+1, 0);
+      let recebido=0, juros=0, amort=0;
+      emprestimos.forEach(e=>(e.historico||[]).forEach(h=>{
+        if(!h.data) return;
+        const dh=new Date(h.data+"T12:00:00");
+        if(dh>=d&&dh<=fim){recebido+=h.valorPago||0;juros+=h.juros||0;amort+=h.abateCapital||0;}
+      }));
+      meses.push({label:d.toLocaleDateString("pt-BR",{month:"short",year:"2-digit"}), recebido, juros, amort});
+    }
+    return meses;
+  };
+
+  // Export para Excel/CSV
+  const exportarCSV = () => {
+    const linhas = [["Nome","CPF","Telefone","Ref1 Nome","Ref1 Tel","Capital","Saldo","Taxa","Tipo","Dia Venc","Status","Juros Mensal"]];
+    opsAtivas.forEach(e=>{
+      const c=getCliente(e.cliente_id);
+      const st=statusVenc(e.dia_venc,e.historico);
+      linhas.push([c?.nome||"",c?.cpf||"",c?.telefone||"",c?.ref1_nome||"",c?.ref1_tel||"",e.capital,e.capital_atual,e.taxa+"%",e.tipo==="minimo"?"Juros":"Parcela","Dia "+e.dia_venc,SL[st],minJuros(e.capital_atual,e.taxa)]);
+    });
+    const csv = linhas.map(l=>l.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv],{type:"text/csv;charset=utf-8;"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href=url; a.download=`financeauto_${today()}.csv`; a.click();
+    URL.revokeObjectURL(url);
+    showToast("CSV exportado!");
   };
 
   // Projeção de recebimentos
@@ -966,7 +1032,10 @@ export default function App() {
                     {e.tipo==="parcelado"&&<div style={{color:"#8b5cf6",fontSize:12}}>Parcelas: <b>{parcelasPagas}</b> pagas · <b>{Math.max(0,(totalParcelas||0)-parcelasPagas)}</b> em aberto</div>}
                     {!quitado&&<div style={{color:SC[st],fontSize:12,fontWeight:600,marginTop:2}}>{SL[st]}{st==="atrasado"?` (${at} dias)`:""}</div>}
                   </div>
-                  <button onClick={()=>{const n=primeiroNome(c.nome);const j=fmt(jAtual);const s=fmt(e.capital_atual);const parc=e.tipo==="parcelado"?`, parcela ${parcelasPagas+1} de ${totalParcelas} (${fmt(valorParcela)})`:"";const msg=st==="atrasado"?`Olá ${n}, tudo bem? Passando para avisar que seu pagamento está em atraso há ${at} dia(s). Venceu dia ${e.dia_venc}, valor de ${j}${parc}. Saldo: ${s}. Podemos acertar?`:st==="hoje"?`Olá ${n}, tudo bem? Passando para lembrar que seu pagamento vence hoje dia ${e.dia_venc}. Valor: ${j}${parc}. Saldo: ${s}.`:`Olá ${n}, tudo bem? Seu vencimento é todo dia ${e.dia_venc}. Valor: ${j}${parc}. Saldo: ${s}.`;abrirWhatsCliente(c.telefone,msg);}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:8,padding:"8px 12px",cursor:"pointer",fontWeight:700,fontSize:12,whiteSpace:"nowrap"}}>📲 WhatsApp</button>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  <button onClick={()=>gerarExtrato(c)} style={{background:T.card2,border:`1px solid ${T.border}`,color:"#3b82f6",borderRadius:8,padding:"8px 10px",cursor:"pointer",fontWeight:700,fontSize:12,whiteSpace:"nowrap"}}>📄 Extrato</button>
+                  <button onClick={()=>{const n=primeiroNome(c.nome);const j=fmt(jAtual);const parc=e.tipo==="parcelado"?`, parcela ${parcelasPagas+1} de ${totalParcelas} (${fmt(valorParcela)})`:"";const msg=st==="atrasado"?`Olá ${n}, tudo bem? Passando para avisar que seu pagamento está em atraso há ${at} dia(s). Venceu dia ${e.dia_venc}, valor de ${j}${parc}. Podemos acertar?`:st==="hoje"?`Olá ${n}, tudo bem? Passando para lembrar que seu pagamento vence hoje dia ${e.dia_venc}. Valor: ${j}${parc}. Qualquer dúvida estou à disposição!`:`Olá ${n}, tudo bem? Seu vencimento é todo dia ${e.dia_venc}. Valor: ${j}${parc}.`;abrirWhatsCliente(c.telefone,msg);}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:8,padding:"8px 10px",cursor:"pointer",fontWeight:700,fontSize:12,whiteSpace:"nowrap"}}>📲 WhatsApp</button>
+                </div>
                 </div>
               </div>
 
@@ -1122,6 +1191,51 @@ export default function App() {
                     );})}
                   </div>);
                 })()}
+              </div>
+
+              {/* Gráfico mensal */}
+              <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:10,padding:14,marginBottom:16}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                  <div style={{fontWeight:700,fontSize:13}}>📊 Recebimentos por Mês</div>
+                  <div style={{display:"flex",gap:6}}>
+                    {[3,6,12].map(n=><button key={n} onClick={()=>setGraficoMeses(n)} style={{padding:"4px 10px",borderRadius:6,border:`1px solid ${graficoMeses===n?"#f59e0b":T.border}`,background:graficoMeses===n?"#f59e0b10":T.card2,color:graficoMeses===n?"#f59e0b":T.text2,cursor:"pointer",fontSize:12,fontWeight:graficoMeses===n?700:400}}>{n}m</button>)}
+                  </div>
+                </div>
+                {(()=>{
+                  const dados=dadosGrafico(graficoMeses);
+                  const maxVal=Math.max(...dados.map(d=>d.recebido),1);
+                  return(
+                    <div>
+                      <div style={{display:"flex",gap:4,alignItems:"flex-end",height:120,marginBottom:8}}>
+                        {dados.map((d,i)=>(
+                          <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+                            <div style={{fontSize:9,color:T.text2,fontWeight:600}}>{d.recebido>0?fmt(d.recebido).replace("R$","").trim():""}</div>
+                            <div style={{width:"100%",display:"flex",gap:2,alignItems:"flex-end",height:80}}>
+                              <div style={{flex:1,background:"#3b82f6",borderRadius:"3px 3px 0 0",height:`${(d.juros/maxVal)*80}px`,minHeight:d.juros>0?4:0,transition:"height 0.3s"}} title={`Juros: ${fmt(d.juros)}`}/>
+                              <div style={{flex:1,background:"#8b5cf6",borderRadius:"3px 3px 0 0",height:`${(d.amort/maxVal)*80}px`,minHeight:d.amort>0?4:0,transition:"height 0.3s"}} title={`Amort: ${fmt(d.amort)}`}/>
+                            </div>
+                            <div style={{fontSize:9,color:T.text2,textAlign:"center"}}>{d.label}</div>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{display:"flex",gap:16,fontSize:11}}>
+                        <span><span style={{display:"inline-block",width:10,height:10,background:"#3b82f6",borderRadius:2,marginRight:4}}/>Juros</span>
+                        <span><span style={{display:"inline-block",width:10,height:10,background:"#8b5cf6",borderRadius:2,marginRight:4}}/>Amortização</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Exportar CSV */}
+              <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:10,padding:14,marginBottom:16}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div>
+                    <div style={{fontWeight:700,fontSize:13}}>💾 Backup / Exportar</div>
+                    <div style={{color:T.text2,fontSize:12,marginTop:4}}>Exporta todas as operações ativas para Excel/CSV</div>
+                  </div>
+                  <button onClick={exportarCSV} style={{...btnP}}>📥 Exportar CSV</button>
+                </div>
               </div>
 
               {/* Lista impressão */}
