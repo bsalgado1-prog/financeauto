@@ -236,12 +236,12 @@ export default function App() {
   };
 
   const msgWhatsEmp = (e,c,tipo) => {
-    const nome=primeiroNome(c?.nome); const j=fmt(minJuros(e.capital_atual,e.taxa)); const s=fmt(e.capital_atual);
+    const nome=primeiroNome(c?.nome); const j=fmt(minJuros(e.capital_atual,e.taxa));
     const parc=e.tipo==="parcelado"?(()=>{const pg=e.historico?.filter(h=>(h.abateCapital||0)>0).length||0;return `, parcela ${pg+1} de ${e.num_parcelas} no valor de ${fmt(pmt(e.capital,e.taxa,e.num_parcelas))}`; })():"";
     const at=diasAtraso(e.dia_venc);
-    if(tipo==="atrasado") return `Olá ${nome}, tudo bem? Passando para avisar que seu pagamento está em atraso há ${at} dia(s). Venceu dia ${e.dia_venc}, valor de ${j} de juros${parc}. Saldo devedor: ${s}. Podemos acertar?`;
-    if(tipo==="hoje") return `Olá ${nome}, tudo bem? Passando para lembrar que seu pagamento vence hoje dia ${e.dia_venc}. Valor de ${j}${parc}. Saldo devedor: ${s}. Qualquer dúvida estou à disposição!`;
-    return `Olá ${nome}, tudo bem? Seu pagamento vence em breve, no dia ${e.dia_venc}. Valor de ${j}${parc}. Saldo devedor: ${s}.`;
+    if(tipo==="atrasado") return `Olá ${nome}, tudo bem? Passando para avisar que seu pagamento está em atraso há ${at} dia(s). Venceu dia ${e.dia_venc}, valor de ${j} de juros${parc}. Podemos acertar?`;
+    if(tipo==="hoje") return `Olá ${nome}, tudo bem? Passando para lembrar que seu pagamento vence hoje dia ${e.dia_venc}. Valor de ${j}${parc}. Qualquer dúvida estou à disposição!`;
+    return `Olá ${nome}, tudo bem? Seu pagamento vence em breve, no dia ${e.dia_venc}. Valor de ${j}${parc}.`;
   };
 
   const simular = () => {
