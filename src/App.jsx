@@ -530,7 +530,8 @@ export default function App() {
 
   const sortOps = (ops, tipo) => {
     const sorted = [...ops];
-    const byName = (a,b) => {const ca=getCliente(a.cliente_id),cb=getCliente(b.cliente_id);return(ca?.nome||"").localeCompare(cb?.nome||"");};
+    const nomeTomador = (e) => (e.nome_tomador||getCliente(e.cliente_id)?.nome||"").toUpperCase();
+    const byName = (a,b) => nomeTomador(a).localeCompare(nomeTomador(b));
     if(tipo==="az") return sorted.sort((a,b)=>{const d=byName(a,b);return d!==0?d:(parseInt(a.dia_venc)||99)-(parseInt(b.dia_venc)||99);});
     if(tipo==="za") return sorted.sort((a,b)=>{const d=byName(b,a);return d!==0?d:(parseInt(a.dia_venc)||99)-(parseInt(b.dia_venc)||99);});
     if(tipo==="dia") return sorted.sort((a,b)=>{const d=(parseInt(a.dia_venc)||99)-(parseInt(b.dia_venc)||99);return d!==0?d:byName(a,b);});
