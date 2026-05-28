@@ -815,7 +815,7 @@ export default function App() {
               {opsVenc.map(e=>{const c=getCliente(e.cliente_id);const st=statusVenc(e.dia_venc,e.historico);const at=diasAtraso(e.dia_venc);return(
                 <div key={e.id} onClick={()=>{setClienteSel(c);setEmpSel(e);setStep(3);setAba("detalhe");}} style={{background:T.card,border:`1px solid ${SC[st]}40`,borderLeft:`4px solid ${SC[st]}`,borderRadius:10,padding:12,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <div>
-                    <div style={{fontWeight:700,fontSize:14}}>{primeiroNome(c?.nome)}</div>
+                    <div style={{fontWeight:700,fontSize:14}}>{c?.nome}</div>
                     {e.nome_tomador&&<div style={{color:"#f59e0b",fontSize:12,fontWeight:700}}>👤 {e.nome_tomador}</div>}
                     {c?.ref1_nome&&<div style={{color:"#f59e0b",fontSize:11}}>📞 {c.ref1_nome} · {c.ref1_tel}</div>}
                     <div style={{color:T.text2,fontSize:12,marginTop:2}}>Saldo: <b style={{color:"#ef4444"}}>{fmt(e.capital_atual)}</b> · Min: <b style={{color:"#3b82f6"}}>{fmt(minJuros(e.capital_atual,e.taxa))}</b></div>
@@ -853,7 +853,7 @@ export default function App() {
                 {grupo.map(e=>{const c=getCliente(e.cliente_id);const at=diasAtraso(e.dia_venc);const pg=e.historico?.filter(h=>(h.abateCapital||0)>0).length||0;return(
                   <div key={e.id} onClick={()=>{setClienteSel(c);setEmpSel(e);setStep(3);setAba("detalhe");}} style={{background:T.card,border:`1px solid ${SC[tipo]}40`,borderLeft:`4px solid ${SC[tipo]}`,borderRadius:10,padding:12,cursor:"pointer",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <div>
-                      <div style={{fontWeight:700,fontSize:14}}>{primeiroNome(c?.nome)}</div>
+                      <div style={{fontWeight:700,fontSize:14}}>{c?.nome}</div>
                     {e.nome_tomador&&<div style={{color:"#f59e0b",fontSize:12,fontWeight:700}}>👤 {e.nome_tomador}</div>}
                       {c?.ref1_nome&&<div style={{color:"#f59e0b",fontSize:11}}>📞 {c.ref1_nome} · {c.ref1_tel}</div>}
                       <div style={{color:T.text2,fontSize:12,marginTop:2}}>Saldo: <b style={{color:"#ef4444"}}>{fmt(e.capital_atual)}</b> · Pagar: <b style={{color:SC[tipo]}}>{fmt(minJuros(e.capital_atual,e.taxa))}</b></div>
