@@ -17,7 +17,7 @@ const api = async (method, path, body) => {
 };
 
 const db = {
-  clientes: { listar: () => api("GET", "/clientes?order=nome.asc&select=*"), criar: (d) => api("POST", "/clientes", d), atualizar: (id, d) => api("PATCH", `/clientes?id=eq.${id}`, d) },
+  clientes: { listar: () => api("GET", "/clientes?order=nome.asc&select=*"), criar: (d) => api("POST", "/clientes", d), atualizar: (id, d) => api("PATCH", `/clientes?id=eq.${id}`, d), excluir: (id) => api("DELETE", `/clientes?id=eq.${id}`) },
   emprestimos: { listar: () => api("GET", "/emprestimos?order=criado_em.desc&select=*"), criar: (d) => api("POST", "/emprestimos", d), atualizar: (id, d) => api("PATCH", `/emprestimos?id=eq.${id}`, d) },
   rapidos: { listar: () => api("GET", "/rapidos?order=criado_em.desc&select=*"), criar: (d) => api("POST", "/rapidos", d), atualizar: (id, d) => api("PATCH", `/rapidos?id=eq.${id}`, d) },
 };
@@ -97,6 +97,7 @@ export default function App() {
   const [clienteSel, setClienteSel] = useState(null); const [step, setStep] = useState(1);
   const [cf, setCf] = useState(emptyC); const [ef, setEf] = useState(emptyE);
   const [modoForm, setModoForm] = useState(null);
+  const [editandoCliente, setEditandoCliente] = useState(null);
   // Emprestimos detalhe
   const [empSel, setEmpSel] = useState(null);
   const [novoPag, setNovoPag] = useState({valor:"",data:today(),obs:"",multa:""});
@@ -159,6 +160,7 @@ export default function App() {
   // Salvar cliente
   const salvarCliente = async () => {
     if(!cf.nome||!cf.telefone){showToast("Preencha nome e telefone.","erro");return;}
+    if(editandoCliente) { await salvarClienteEdicao(); return; }
     setSalvando(true);
     try { await db.clientes.criar(cf); setCf(emptyC); setModoForm(null); setAba("lista"); showToast("Cliente cadastrado!"); await carregar(); }
     catch(e){showToast("Erro.","erro");} finally{setSalvando(false);}
@@ -207,6 +209,36 @@ export default function App() {
       showToast("Excluído!"); await carregar();
       const es=await db.emprestimos.listar(); setEmprestimos(es||[]);
       setEmpSel(es.find(x=>x.id===empSel.id)||null);
+    } catch(e){showToast("Erro.","erro");} finally{setSalvando(false);}
+  };
+
+  const excluirCliente = async (c) => {
+    if(!window.confirm(`Excluir o cliente ${c.nome} e todas as operações? Esta ação não pode ser desfeita.`)) return;
+    setSalvando(true);
+    try {
+      // Excluir empréstimos do cliente
+      const empsDoC = emprestimos.filter(e=>e.cliente_id===c.id);
+      for(const e of empsDoC) await db.emprestimos.atualizar(e.id, {cliente_id: null});
+      await db.clientes.excluir(c.id);
+      showToast("Cliente excluído!"); await carregar();
+      setAba("lista"); setClienteSel(null);
+    } catch(e){showToast("Erro ao excluir.","erro");} finally{setSalvando(false);}
+  };
+
+  const editarCliente = (c) => {
+    setCf({nome:c.nome||"",cpf:c.cpf||"",rg:c.rg||"",nascimento:c.nascimento||"",telefone:c.telefone||"",email:c.email||"",endereco:c.endereco||"",cidade:c.cidade||"",estado:c.estado||"",cep:c.cep||"",ref1_nome:c.ref1_nome||"",ref1_tel:c.ref1_tel||"",ref1_par:c.ref1_par||"",ref2_nome:c.ref2_nome||"",ref2_tel:c.ref2_tel||"",ref2_par:c.ref2_par||""});
+    setEditandoCliente(c);
+    setModoForm("cliente");
+    setAba("form");
+  };
+
+  const salvarClienteEdicao = async () => {
+    if(!cf.nome||!cf.telefone){showToast("Preencha nome e telefone.","erro");return;}
+    setSalvando(true);
+    try {
+      await db.clientes.atualizar(editandoCliente.id, cf);
+      setCf(emptyC); setModoForm(null); setEditandoCliente(null); setAba("lista");
+      showToast("Cliente atualizado!"); await carregar();
     } catch(e){showToast("Erro.","erro");} finally{setSalvando(false);}
   };
 
@@ -458,7 +490,11 @@ export default function App() {
                         <Chip label="Ops" val={`${ativos.length}/${emps.length}`} color="#8b5cf6" T={T}/>
                         {ativos.length>0&&<Chip label="Venc." val={ativos.map(e=>`Dia ${e.dia_venc}`).join("·")} color="#f59e0b" T={T}/>}
                       </div>
-                      <button onClick={ev=>{ev.stopPropagation();const s2=fmt(saldo);const v=ativos.map(e=>`Dia ${e.dia_venc}`).join(" e ")||"—";const msg=`Olá! O cliente ${c.nome} tem saldo devedor de ${s2}, com vencimento todo ${v}. Telefone: ${c.telefone}.`;abrirWhats(msg);}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:8,padding:"5px 10px",cursor:"pointer",fontWeight:700,fontSize:11}}>📲</button>
+                      <div style={{display:"flex",gap:6}}>
+                        <button onClick={ev=>{ev.stopPropagation();editarCliente(c);}} style={{background:T.card2,border:`1px solid ${T.border}`,color:"#f59e0b",borderRadius:6,padding:"5px 8px",cursor:"pointer",fontSize:11}}>✏️</button>
+                        <button onClick={ev=>{ev.stopPropagation();excluirCliente(c);}} style={{background:T.card2,border:`1px solid ${T.border}`,color:"#ef4444",borderRadius:6,padding:"5px 8px",cursor:"pointer",fontSize:11}}>🗑️</button>
+                        <button onClick={ev=>{ev.stopPropagation();const s2=fmt(saldo);const v=ativos.map(e=>`Dia ${e.dia_venc}`).join(" e ")||"—";const msg=`Olá! O cliente ${c.nome} tem saldo devedor de ${s2}, com vencimento todo ${v}. Telefone: ${c.telefone}.`;abrirWhats(msg);}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:6,padding:"5px 8px",cursor:"pointer",fontWeight:700,fontSize:11}}>📲</button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -632,14 +668,14 @@ export default function App() {
         {/* ===== FORM CLIENTE ===== */}
         {aba==="form"&&modoForm==="cliente"&&(
           <div>
-            <h2 style={{fontWeight:800,fontSize:20,marginBottom:18}}>Novo Cliente</h2>
+            <h2 style={{fontWeight:800,fontSize:20,marginBottom:18}}>{editandoCliente?"✏️ Editar Cliente":"Novo Cliente"}</h2>
             <Sec T={T}>👤 Dados Pessoais</Sec>
             <Grid2><F label="Nome *" name="nome" value={cf.nome} onChange={e=>setCf(f=>({...f,[e.target.name]:e.target.value}))} T={T}/><F label="CPF" name="cpf" value={cf.cpf} onChange={e=>setCf(f=>({...f,[e.target.name]:e.target.value}))} ph="000.000.000-00" T={T}/><F label="RG" name="rg" value={cf.rg} onChange={e=>setCf(f=>({...f,[e.target.name]:e.target.value}))} T={T}/><F label="Nascimento" name="nascimento" type="date" value={cf.nascimento} onChange={e=>setCf(f=>({...f,[e.target.name]:e.target.value}))} T={T}/><F label="Telefone *" name="telefone" value={cf.telefone} onChange={e=>setCf(f=>({...f,[e.target.name]:e.target.value}))} ph="(00) 00000-0000" T={T}/><F label="E-mail" name="email" value={cf.email} onChange={e=>setCf(f=>({...f,[e.target.name]:e.target.value}))} T={T}/></Grid2>
             <Sec mt T={T}>🏠 Endereço</Sec>
             <Grid2><F label="Endereço" name="endereco" value={cf.endereco} onChange={e=>setCf(f=>({...f,[e.target.name]:e.target.value}))} T={T}/><F label="Cidade" name="cidade" value={cf.cidade} onChange={e=>setCf(f=>({...f,[e.target.name]:e.target.value}))} T={T}/><div><label style={lbl(T)}>Estado</label><select name="estado" value={cf.estado} onChange={e=>setCf(f=>({...f,[e.target.name]:e.target.value}))} style={inp(T)}><option value="">Selecione</option>{ESTADOS.map(e=><option key={e}>{e}</option>)}</select></div><F label="CEP" name="cep" value={cf.cep} onChange={e=>setCf(f=>({...f,[e.target.name]:e.target.value}))} ph="00000-000" T={T}/></Grid2>
             <Sec mt T={T}>📞 Referências</Sec>
             <Grid2><F label="Ref. 1 - Nome" name="ref1_nome" value={cf.ref1_nome} onChange={e=>setCf(f=>({...f,[e.target.name]:e.target.value}))} T={T}/><F label="Ref. 1 - Tel" name="ref1_tel" value={cf.ref1_tel} onChange={e=>setCf(f=>({...f,[e.target.name]:e.target.value}))} T={T}/><F label="Ref. 1 - Parentesco" name="ref1_par" value={cf.ref1_par} onChange={e=>setCf(f=>({...f,[e.target.name]:e.target.value}))} ph="Ex: Irmão..." T={T}/><div/><F label="Ref. 2 - Nome" name="ref2_nome" value={cf.ref2_nome} onChange={e=>setCf(f=>({...f,[e.target.name]:e.target.value}))} T={T}/><F label="Ref. 2 - Tel" name="ref2_tel" value={cf.ref2_tel} onChange={e=>setCf(f=>({...f,[e.target.name]:e.target.value}))} T={T}/><F label="Ref. 2 - Parentesco" name="ref2_par" value={cf.ref2_par} onChange={e=>setCf(f=>({...f,[e.target.name]:e.target.value}))} ph="Ex: Mãe..." T={T}/></Grid2>
-            <div style={{display:"flex",justifyContent:"space-between",marginTop:20}}><button onClick={()=>{setModoForm(null);setAba("lista");}} style={{...btnS(T)}}>Cancelar</button><button onClick={salvarCliente} disabled={salvando} style={{...btnP,opacity:salvando?0.6:1}}>{salvando?"Salvando...":"✅ Salvar"}</button></div>
+            <div style={{display:"flex",justifyContent:"space-between",marginTop:20}}><button onClick={()=>{setModoForm(null);setAba("lista");setCf(emptyC);setEditandoCliente(null);}} style={{...btnS(T)}}>Cancelar</button><button onClick={salvarCliente} disabled={salvando} style={{...btnP,opacity:salvando?0.6:1}}>{salvando?"Salvando...":"✅ Salvar"}</button></div>
           </div>
         )}
 
@@ -654,7 +690,11 @@ export default function App() {
                   {clienteSel.ref1_nome&&<div style={{color:"#f59e0b",fontSize:12,marginTop:4}}>📞 {clienteSel.ref1_nome} · {clienteSel.ref1_tel} ({clienteSel.ref1_par})</div>}
                   {clienteSel.ref2_nome&&<div style={{color:"#f59e0b",fontSize:12,marginTop:2}}>📞 {clienteSel.ref2_nome} · {clienteSel.ref2_tel} ({clienteSel.ref2_par})</div>}
                 </div>
-                <button onClick={()=>{const s=fmt(saldoTotal(clienteSel.id));const v=empsAtivos(clienteSel.id).map(e=>`Dia ${e.dia_venc}`).join(" e ")||"—";abrirWhats(`Olá! O cliente ${clienteSel.nome} tem saldo devedor de ${s}, vencimento todo ${v}. Tel: ${clienteSel.telefone}.`);}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:8,padding:"6px 10px",cursor:"pointer",fontWeight:700,fontSize:11}}>📲</button>
+                <div style={{display:"flex",gap:6}}>
+                  <button onClick={()=>editarCliente(clienteSel)} style={{background:T.card2,border:`1px solid ${T.border}`,color:"#f59e0b",borderRadius:6,padding:"6px 10px",cursor:"pointer",fontSize:12}}>✏️ Editar</button>
+                  <button onClick={()=>excluirCliente(clienteSel)} style={{background:T.card2,border:`1px solid ${T.border}`,color:"#ef4444",borderRadius:6,padding:"6px 10px",cursor:"pointer",fontSize:12}}>🗑️</button>
+                  <button onClick={()=>{const s=fmt(saldoTotal(clienteSel.id));const v=empsAtivos(clienteSel.id).map(e=>`Dia ${e.dia_venc}`).join(" e ")||"—";abrirWhats(`Olá! O cliente ${clienteSel.nome} tem saldo devedor de ${s}, vencimento todo ${v}. Tel: ${clienteSel.telefone}.`);}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:6,padding:"6px 10px",cursor:"pointer",fontWeight:700,fontSize:12}}>📲</button>
+                </div>
               </div>
               <div style={{display:"flex",gap:14,marginTop:10,flexWrap:"wrap"}}>
                 <Chip label="Saldo total" val={fmt(saldoTotal(clienteSel.id))} color="#ef4444" T={T}/>
