@@ -3,8 +3,10 @@ import { useState, useEffect, useRef } from "react";
 const SURL = "https://oshwhirmwrzfpzuxaois.supabase.co";
 const SKEY = "sb_publishable_xPWGqf-IoTgb5aOF_FBmdA_hpYCqaHU";
 const MEU_WHATS = "5511955509308";
-const USUARIO = "Brt011680";
-const SENHA = "brT41585323*";
+const USUARIOS = [
+  {usuario:"Brt011680", senha:"brT41585323*", nome:"Bruno", admin:true},
+  {usuario:"user2", senha:"senha2", nome:"Usuário 2", admin:false},
+];
 
 const api = async (method, path, body) => {
   const res = await fetch(`${SURL}/rest/v1${path}`, {
@@ -136,7 +138,12 @@ export default function App() {
 
   useEffect(()=>{ if(logado) carregar(); },[logado]);
 
-  const fazerLogin = () => { if(usuario===USUARIO&&senha===SENHA){sessionStorage.setItem("fa_auth","1");setLogado(true);setErroLogin(false);}else{setErroLogin(true);setSenha("");} };
+  const fazerLogin = () => {
+    const user = USUARIOS.find(u=>u.usuario===usuario&&u.senha===senha);
+    if(user){sessionStorage.setItem("fa_auth","1");sessionStorage.setItem("fa_user",JSON.stringify(user));setLogado(true);setErroLogin(false);}
+    else{setErroLogin(true);setSenha("");}
+  };
+  const userAtual = JSON.parse(sessionStorage.getItem("fa_user")||"{}");
 
   // Helpers
   const empsCliente = (cid) => emprestimos.filter(e=>e.cliente_id===cid);
@@ -217,6 +224,24 @@ export default function App() {
       const es=await db.emprestimos.listar(); setEmprestimos(es||[]);
       setEmpSel(es.find(x=>x.id===empSel.id)||null);
     } catch(e){showToast("Erro.","erro");} finally{setSalvando(false);}
+  };
+
+  const salvarFoto = async (file, clienteId) => {
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const base64 = e.target.result;
+      setSalvando(true);
+      try {
+        await db.clientes.atualizar(clienteId, {foto:base64});
+        showToast("Foto salva!");
+        await carregar();
+        const cs = await db.clientes.listar();
+        setClientes(cs||[]);
+        setClienteSel(cs.find(x=>x.id===clienteId)||null);
+      } catch(err){showToast("Erro ao salvar foto.","erro");} finally{setSalvando(false);}
+    };
+    reader.readAsDataURL(file);
   };
 
   const salvarAnotacao = async () => {
@@ -317,6 +342,46 @@ export default function App() {
     if(!c||!t) return null;
     if(simTipo==="minimo"){const min=minJuros(c,t);return{min,total:c+min,tipo:"minimo"};}
     const p=pmt(c,t,n); return{parcela:p,total:p*n,juros:p*n-c,n,tipo:"parcelado"};
+  };
+
+  // Gerar contrato
+  const gerarContrato = (c, e) => {
+    const hoje2 = new Date().toLocaleDateString("pt-BR");
+    const valorParcela2 = e.tipo==="parcelado" ? pmt(e.capital,e.taxa,e.num_parcelas) : minJuros(e.capital_atual,e.taxa);
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Contrato - ${c.nome}</title>
+    <style>body{font-family:Arial,sans-serif;margin:40px;color:#222;line-height:1.6}h1{text-align:center;font-size:16px;text-transform:uppercase;letter-spacing:2px;margin-bottom:30px}.linha{border-bottom:1px solid #ccc;margin:20px 0}.campo{display:inline-block;border-bottom:1px solid #222;min-width:200px;margin:0 8px}.secao{margin:20px 0}.assinatura{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:60px}.ass-box{text-align:center}.ass-linha{border-top:1px solid #222;padding-top:8px;font-size:12px}@media print{button{display:none}}</style>
+    </head><body>
+    <h1>Contrato de Empréstimo</h1>
+    <div class="secao">
+      <p><b>CREDOR:</b> <span class="campo">Bruno Salgado</span> &nbsp;&nbsp; <b>Data:</b> <span class="campo">${hoje2}</span></p>
+      <p><b>DEVEDOR:</b> <span class="campo">${c.nome}</span></p>
+      <p><b>CPF:</b> <span class="campo">${c.cpf||"___________________"}</span> &nbsp;&nbsp; <b>RG:</b> <span class="campo">${c.rg||"___________________"}</span></p>
+      <p><b>Endereço:</b> <span class="campo" style="min-width:350px">${[c.endereco,c.cidade,c.estado].filter(Boolean).join(", ")||"_________________________________"}</span></p>
+      <p><b>Telefone:</b> <span class="campo">${c.telefone||"___________________"}</span></p>
+    </div>
+    <div class="linha"></div>
+    <div class="secao">
+      <p><b>VALOR DO EMPRÉSTIMO:</b> <span class="campo">${fmt(e.capital)}</span></p>
+      <p><b>TAXA DE JUROS:</b> <span class="campo">${e.taxa}% ao mês</span></p>
+      <p><b>MODALIDADE:</b> <span class="campo">${e.tipo==="minimo"?"Pagamento de Juros Mensais":"Parcelado (Tabela Price)"}</span></p>
+      ${e.tipo==="parcelado"?`<p><b>NÚMERO DE PARCELAS:</b> <span class="campo">${e.num_parcelas}x de ${fmt(valorParcela2)}</span></p>`:`<p><b>VALOR MÍNIMO MENSAL:</b> <span class="campo">${fmt(valorParcela2)}</span></p>`}
+      <p><b>DIA DE VENCIMENTO:</b> <span class="campo">Todo dia ${e.dia_venc} de cada mês</span></p>
+    </div>
+    <div class="linha"></div>
+    <div class="secao" style="font-size:12px">
+      <p>O DEVEDOR declara ter recebido o valor acima e se compromete a efetuar os pagamentos nas datas acordadas. O não pagamento na data de vencimento implicará em multa e juros adicionais conforme acordado entre as partes.</p>
+      <p>As partes declaram que leram e concordam com os termos deste contrato.</p>
+    </div>
+    <div class="assinatura">
+      <div class="ass-box"><div class="ass-linha">${c.nome}<br>DEVEDOR</div></div>
+      <div class="ass-box"><div class="ass-linha">Bruno Salgado<br>CREDOR</div></div>
+    </div>
+    <div style="margin-top:40px"><p style="font-size:11px"><b>REFERÊNCIA 1:</b> ${c.ref1_nome||"—"} — Tel: ${c.ref1_tel||"—"} — Parentesco: ${c.ref1_par||"—"}</p>
+    ${c.ref2_nome?`<p style="font-size:11px"><b>REFERÊNCIA 2:</b> ${c.ref2_nome} — Tel: ${c.ref2_tel||"—"} — Parentesco: ${c.ref2_par||"—"}</p>`:""}
+    </div>
+    <button onclick="window.print()" style="margin-top:20px;padding:8px 16px;background:#222;color:#fff;border:none;border-radius:6px;cursor:pointer">🖨️ Imprimir / Salvar PDF</button>
+    </body></html>`;
+    const w = window.open("","_blank"); w.document.write(html); w.document.close();
   };
 
   // Extrato do cliente em HTML para impressão
@@ -481,7 +546,9 @@ export default function App() {
               </div>
             )}
           </div>
-          <button onClick={()=>{const novoTema=tema==="escuro"?"claro":"escuro";setTema(novoTema);localStorage.setItem("fa_tema",novoTema);}} style={{background:"none",border:`1px solid ${T.border}`,color:T.text2,borderRadius:8,padding:"6px 10px",cursor:"pointer",fontSize:13}}>{tema==="escuro"?"☀️":"🌙"}</button>
+          <span style={{color:T.text2,fontSize:11,display:"none"}} className="hidden-mobile">{userAtual.nome||""}</span>
+          <button onClick={()=>{const novoTema=tema==="escuro"?"claro":"escuro";setTema(novoTema);localStorage.setItem("fa_tema",novoTema);}} style={{background:"none",border:"1px solid "+T.border,color:T.text2,borderRadius:8,padding:"6px 10px",cursor:"pointer",fontSize:13}}>{tema==="escuro"?"☀️":"🌙"}</button>
+          <button onClick={()=>{sessionStorage.removeItem("fa_auth");sessionStorage.removeItem("fa_user");setLogado(false);}} style={{background:"none",border:"1px solid "+T.border,color:"#ef4444",borderRadius:8,padding:"6px 8px",cursor:"pointer",fontSize:11}}>Sair</button>
           {aba==="detalhe"&&step===3&&<button onClick={()=>{setStep(2);setEmpSel(null);setNovoPag({valor:"",data:today(),obs:"",multa:""});setEditandoPag(null);}} style={{...btnS(T)}}>← Ops</button>}
           {aba==="detalhe"&&step===2&&<button onClick={()=>{setAba("lista");setClienteSel(null);setStep(1);}} style={{...btnS(T)}}>← Lista</button>}
           {aba==="detalhe"&&step===2&&<button onClick={()=>setModoForm("emprestimo")} style={{...btnP}}>+ Op.</button>}
@@ -889,14 +956,21 @@ export default function App() {
             <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,padding:14,marginBottom:14}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
                 <div>
-                  <div style={{fontWeight:800,fontSize:17,marginBottom:2}}>{clienteSel.nome}</div>
+                  <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:6}}>
+                    {clienteSel.foto&&<img src={clienteSel.foto} alt="foto" style={{width:48,height:48,borderRadius:"50%",objectFit:"cover",border:"2px solid #f59e0b"}}/>}
+                    <div style={{fontWeight:800,fontSize:17}}>{clienteSel.nome}</div>
+                  </div>
                   <div style={{color:T.text2,fontSize:12}}>{clienteSel.cpf} · {clienteSel.telefone}</div>
                   {clienteSel.ref1_nome&&<div style={{color:"#f59e0b",fontSize:12,marginTop:4}}>📞 {clienteSel.ref1_nome} · {clienteSel.ref1_tel} ({clienteSel.ref1_par})</div>}
                   {clienteSel.ref2_nome&&<div style={{color:"#f59e0b",fontSize:12,marginTop:2}}>📞 {clienteSel.ref2_nome} · {clienteSel.ref2_tel} ({clienteSel.ref2_par})</div>}
                 </div>
-                <div style={{display:"flex",gap:6}}>
-                  <button onClick={()=>editarCliente(clienteSel)} style={{background:T.card2,border:`1px solid ${T.border}`,color:"#f59e0b",borderRadius:6,padding:"6px 10px",cursor:"pointer",fontSize:12}}>✏️ Editar</button>
-                  <button onClick={()=>excluirCliente(clienteSel)} style={{background:T.card2,border:`1px solid ${T.border}`,color:"#ef4444",borderRadius:6,padding:"6px 10px",cursor:"pointer",fontSize:12}}>🗑️</button>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  <button onClick={()=>editarCliente(clienteSel)} style={{background:T.card2,border:"1px solid "+T.border,color:"#f59e0b",borderRadius:6,padding:"6px 10px",cursor:"pointer",fontSize:12}}>✏️</button>
+                  <button onClick={()=>excluirCliente(clienteSel)} style={{background:T.card2,border:"1px solid "+T.border,color:"#ef4444",borderRadius:6,padding:"6px 10px",cursor:"pointer",fontSize:12}}>🗑️</button>
+                  <label style={{background:T.card2,border:"1px solid "+T.border,color:"#8b5cf6",borderRadius:6,padding:"6px 10px",cursor:"pointer",fontSize:12,fontWeight:600}}>
+                    📸
+                    <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>{ if(e.target.files[0]) salvarFoto(e.target.files[0],clienteSel.id); }}/>
+                  </label>
                   <button onClick={()=>{const s=fmt(saldoTotal(clienteSel.id));const v=empsAtivos(clienteSel.id).map(e=>`Dia ${e.dia_venc}`).join(" e ")||"—";abrirWhats(`Olá! O cliente ${clienteSel.nome} tem saldo devedor de ${s}, vencimento todo ${v}. Tel: ${clienteSel.telefone}.`);}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:6,padding:"6px 10px",cursor:"pointer",fontWeight:700,fontSize:12}}>📲</button>
                 </div>
               </div>
@@ -1296,3 +1370,4 @@ const inp = (T) => ({width:"100%",background:T?.inp||"#0d1e40",border:`1px solid
 const lbl = (T) => ({display:"block",color:T?.text2||"#7a9cc8",fontSize:11,marginBottom:4,fontWeight:500});
 const btnP = {background:"linear-gradient(135deg,#f59e0b,#ef4444)",color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontWeight:700,fontSize:13,cursor:"pointer"};
 const btnS = (T) => ({background:T?.btn||"#1f2b47",color:T?.btnText||"#e2eaf8",border:`1px solid ${T?.border||"#2a3550"}`,borderRadius:8,padding:"8px 16px",fontWeight:600,fontSize:13,cursor:"pointer"});
+
