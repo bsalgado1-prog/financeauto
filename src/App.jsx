@@ -1376,7 +1376,7 @@ export default function App() {
                 </div>
                 <div style={{overflowX:"auto"}}>
                   <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
-                    <thead><tr style={{background:T.card2,borderBottom:`2px solid ${T.border}`}}>{["#","Nome","Referência","Data Op.","Venc.","Capital","Saldo","Juros/Parc.","Taxa","Tipo","Status",""].map(h=><th key={h} style={{textAlign:"left",padding:"8px 8px",color:T.text2,fontWeight:700,fontSize:10,whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead>
+                    <thead><tr style={{background:T.card2,borderBottom:`2px solid ${T.border}`}}>{["#","Nome","Tomador","Referência","Data Op.","Venc.","Capital","Saldo","Juros/Parc.","Taxa","Tipo","Status",""].map(h=><th key={h} style={{textAlign:"left",padding:"8px 8px",color:T.text2,fontWeight:700,fontSize:10,whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead>
                     <tbody>{(()=>{let rows=[],idx=1;
                       opsAtivas.sort((a,b)=>{const ca=getCliente(a.cliente_id),cb=getCliente(b.cliente_id);return(ca?.nome||"").localeCompare(cb?.nome||"");}).forEach(e=>{
                         const c=getCliente(e.cliente_id); const st=statusVenc(e.dia_venc,e.historico);
@@ -1384,6 +1384,7 @@ export default function App() {
                         rows.push(<tr key={e.id} style={{borderBottom:`1px solid ${T.card2}`,background:idx%2===0?T.card2:"transparent"}}>
                           <td style={{padding:"7px 8px",color:T.text2,fontWeight:700}}>{idx++}</td>
                           <td style={{padding:"7px 8px",fontWeight:700,color:T.text,whiteSpace:"nowrap"}}>{c?.nome}</td>
+                          <td style={{padding:"7px 8px",fontWeight:700,color:"#f59e0b",fontSize:11,whiteSpace:"nowrap"}}>{e.nome_tomador||"—"}</td>
                           <td style={{padding:"7px 8px",color:"#f59e0b",fontSize:10,whiteSpace:"nowrap"}}>{c?.ref1_nome?`${c.ref1_nome} · ${c.ref1_tel}`:"—"}</td>
                           <td style={{padding:"7px 8px",color:T.text2,whiteSpace:"nowrap"}}>{fmtDate(e.data_op)}</td>
                           <td style={{padding:"7px 8px",color:T.text2,whiteSpace:"nowrap"}}>Dia {e.dia_venc}</td>
