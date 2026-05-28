@@ -414,7 +414,10 @@ export default function App() {
         {/* ===== VENCIMENTOS ===== */}
         {aba==="vencimentos" && (
           <div>
-            <div style={{fontWeight:700,fontSize:15,marginBottom:14}}>📅 Operações por Vencimento</div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <div style={{fontWeight:700,fontSize:15}}>📅 Operações por Vencimento</div>
+              <button onClick={()=>window.print()} style={{...btnSec,padding:"7px 12px",fontSize:12}}>🖨️ Imprimir</button>
+            </div>
             {opsVenc.length===0?<div style={{textAlign:"center",padding:"60px 0",color:"#3a5a8a"}}>Nenhuma operação ativa</div>
             :<div style={{display:"flex",flexDirection:"column",gap:8}}>
               {opsVenc.map(e=>{
@@ -489,7 +492,10 @@ export default function App() {
         {/* ===== QUITADOS ===== */}
         {aba==="quitados" && (
           <div>
-            <div style={{fontWeight:700,fontSize:15,marginBottom:14}}>✅ Operações Quitadas ({todasOpsQuitadas.length})</div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <div style={{fontWeight:700,fontSize:15}}>✅ Operações Quitadas ({todasOpsQuitadas.length})</div>
+              <button onClick={()=>window.print()} style={{...btnSec,padding:"7px 12px",fontSize:12}}>🖨️ Imprimir</button>
+            </div>
             {todasOpsQuitadas.length===0?<div style={{textAlign:"center",padding:"60px 0",color:"#3a5a8a"}}>Nenhuma operação quitada</div>
             :<div style={{display:"flex",flexDirection:"column",gap:8}}>
               {todasOpsQuitadas.map(e=>{
@@ -1084,7 +1090,66 @@ export default function App() {
                 );
               })()}
 
-              {/* Detalhamento por operação no período */}
+              {/* Lista para impressão */}
+              <div style={{background:"#16213e",border:"1px solid #2a3550",borderRadius:10,padding:14,marginBottom:16}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                  <div style={{fontWeight:700,fontSize:13}}>🗒️ Lista Completa para Impressão</div>
+                  <button onClick={()=>window.print()} style={{background:"linear-gradient(135deg,#f59e0b,#ef4444)",color:"#fff",border:"none",borderRadius:8,padding:"7px 14px",cursor:"pointer",fontWeight:700,fontSize:12}}>🖨️ Imprimir</button>
+                </div>
+                <div style={{overflowX:"auto"}} className="print-table">
+                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+                    <thead>
+                      <tr style={{background:"#0a1628",borderBottom:"2px solid #2a3550"}}>
+                        {["#","Nome","Referência","Data Op.","Venc.","Capital","Saldo","Juros/Parc.","Taxa","Tipo","Status"].map(h=>(
+                          <th key={h} style={{textAlign:"left",padding:"8px 8px",color:"#7a9cc8",fontWeight:700,fontSize:10,whiteSpace:"nowrap"}}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(()=>{
+                        let rows = [];
+                        let idx = 1;
+                        emprestimos.filter(e=>e.capital_atual>0).sort((a,b)=>{
+                          const ca=getCliente(a.cliente_id), cb=getCliente(b.cliente_id);
+                          return (ca?.nome||"").localeCompare(cb?.nome||"");
+                        }).forEach(e=>{
+                          const c=getCliente(e.cliente_id);
+                          const st=statusVenc(e.dia_venc,e.historico);
+                          const jAtual2=minJuros(e.capital_atual,e.taxa);
+                          const parcVal=e.tipo==="parcelado"?pmt(e.capital,e.taxa,e.num_parcelas):jAtual2;
+                          const stInfo=statusClienteInfo[statusCliente(empsDoCliente(c?.id))];
+                          rows.push(
+                            <tr key={e.id} style={{borderBottom:"1px solid #1a1a2e",background:idx%2===0?"#0f2044":"transparent"}}>
+                              <td style={{padding:"7px 8px",color:"#7a9cc8",fontWeight:700}}>{idx++}</td>
+                              <td style={{padding:"7px 8px",fontWeight:700,color:"#e2eaf8",whiteSpace:"nowrap"}}>{c?.nome}</td>
+                              <td style={{padding:"7px 8px",color:"#f59e0b",fontSize:10,whiteSpace:"nowrap"}}>{c?.ref1_nome?`${c.ref1_nome} · ${c.ref1_tel}`:"—"}</td>
+                              <td style={{padding:"7px 8px",color:"#7a9cc8",whiteSpace:"nowrap"}}>{fmtDate(e.data_op)}</td>
+                              <td style={{padding:"7px 8px",color:"#7a9cc8",whiteSpace:"nowrap"}}>Dia {e.dia_venc}</td>
+                              <td style={{padding:"7px 8px",fontWeight:700,color:"#f59e0b"}}>{fmt(e.capital)}</td>
+                              <td style={{padding:"7px 8px",fontWeight:700,color:"#ef4444"}}>{fmt(e.capital_atual)}</td>
+                              <td style={{padding:"7px 8px",fontWeight:700,color:"#3b82f6"}}>{fmt(parcVal)}</td>
+                              <td style={{padding:"7px 8px",color:"#8b5cf6"}}>{e.taxa}%</td>
+                              <td style={{padding:"7px 8px",color:"#94a3b8",fontSize:10}}>{e.tipo==="minimo"?"Juros":"Parcela"}</td>
+                              <td style={{padding:"7px 8px"}}><span style={{background:SC[st]+"20",color:SC[st],padding:"2px 6px",borderRadius:6,fontSize:9,fontWeight:700,whiteSpace:"nowrap"}}>{SL[st]}</span></td>
+                            </tr>
+                          );
+                        });
+                        return rows;
+                      })()}
+                    </tbody>
+                    <tfoot>
+                      <tr style={{borderTop:"2px solid #2a3550",background:"#0a1628"}}>
+                        <td colSpan={5} style={{padding:"8px 8px",fontWeight:700,color:"#7a9cc8",fontSize:11}}>TOTAL ({emprestimos.filter(e=>e.capital_atual>0).length} operações ativas)</td>
+                        <td style={{padding:"8px 8px",fontWeight:800,color:"#f59e0b"}}>{fmt(emprestimos.filter(e=>e.capital_atual>0).reduce((s,e)=>s+e.capital,0))}</td>
+                        <td style={{padding:"8px 8px",fontWeight:800,color:"#ef4444"}}>{fmt(emprestimos.filter(e=>e.capital_atual>0).reduce((s,e)=>s+e.capital_atual,0))}</td>
+                        <td colSpan={4}></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+
+              {/* Detalhamento por operação no período */}}
               {(()=>{
                 const opsNoPeriodo = emprestimos.filter(e => (e.historico||[]).some(h => { if(!h.data) return false; const d=new Date(h.data+"T12:00:00"); return d>=inicio&&d<=fim; }));
                 if(opsNoPeriodo.length===0) return <div style={{color:"#7a9cc8",fontSize:13,textAlign:"center",padding:"20px 0"}}>Nenhuma movimentação no período selecionado</div>;
