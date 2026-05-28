@@ -107,15 +107,17 @@ const ESTADOS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG
 const emptyC = { nome:"",cpf:"",rg:"",nascimento:"",telefone:"",email:"",endereco:"",cidade:"",estado:"",cep:"",ref1_nome:"",ref1_tel:"",ref1_par:"",ref2_nome:"",ref2_tel:"",ref2_par:"" };
 const emptyE = { capital:"",taxa:"",tipo:"minimo",num_parcelas:"1",data_op:today(),dia_venc:"",obs:"",cliente_tipo:"novo",saldo_atual:"",frequencia_pag:"mensal" };
 
+const USUARIO = "Brt011680";
 const SENHA = "brT41585323*";
 
 export default function App() {
   const [logado, setLogado] = useState(() => sessionStorage.getItem("fa_auth") === "1");
+  const [usuarioInput, setUsuarioInput] = useState("");
   const [senhaInput, setSenhaInput] = useState("");
   const [erroLogin, setErroLogin] = useState(false);
 
   const fazerLogin = () => {
-    if (senhaInput === SENHA) {
+    if (usuarioInput === USUARIO && senhaInput === SENHA) {
       sessionStorage.setItem("fa_auth", "1");
       setLogado(true);
       setErroLogin(false);
@@ -132,8 +134,19 @@ export default function App() {
           <div style={{width:56,height:56,borderRadius:14,background:"linear-gradient(135deg,#f59e0b,#ef4444)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,margin:"0 auto 20px"}}>💰</div>
           <div style={{fontWeight:800,fontSize:22,color:"#ffffff",marginBottom:4}}>FinanceAuto</div>
           <div style={{color:"#7a9cc8",fontSize:13,marginBottom:28}}>Sistema de Cobrança</div>
+          <div style={{marginBottom:12,textAlign:"left"}}>
+            <label style={{display:"block",color:"#7a9cc8",fontSize:12,marginBottom:6,fontWeight:500}}>Usuário</label>
+            <input
+              type="text"
+              value={usuarioInput}
+              onChange={e=>setUsuarioInput(e.target.value)}
+              onKeyDown={e=>e.key==="Enter"&&fazerLogin()}
+              placeholder="Digite seu usuário..."
+              style={{width:"100%",background:"#162d5e",border:`1px solid ${erroLogin?"#ef4444":"#1e3a6e"}`,borderRadius:8,padding:"11px 14px",color:"#e2eaf8",fontSize:14,outline:"none",boxSizing:"border-box"}}
+            />
+          </div>
           <div style={{marginBottom:16,textAlign:"left"}}>
-            <label style={{display:"block",color:"#7a9cc8",fontSize:12,marginBottom:6,fontWeight:500}}>Senha de acesso</label>
+            <label style={{display:"block",color:"#7a9cc8",fontSize:12,marginBottom:6,fontWeight:500}}>Senha</label>
             <input
               type="password"
               value={senhaInput}
@@ -142,7 +155,7 @@ export default function App() {
               placeholder="Digite sua senha..."
               style={{width:"100%",background:"#162d5e",border:`1px solid ${erroLogin?"#ef4444":"#1e3a6e"}`,borderRadius:8,padding:"11px 14px",color:"#e2eaf8",fontSize:14,outline:"none",boxSizing:"border-box"}}
             />
-            {erroLogin&&<div style={{color:"#ef4444",fontSize:12,marginTop:6}}>Senha incorreta. Tente novamente.</div>}
+            {erroLogin&&<div style={{color:"#ef4444",fontSize:12,marginTop:6}}>Usuário ou senha incorretos.</div>}
           </div>
           <button onClick={fazerLogin} style={{width:"100%",background:"linear-gradient(135deg,#f59e0b,#ef4444)",color:"#fff",border:"none",borderRadius:10,padding:"12px 0",fontWeight:800,fontSize:15,cursor:"pointer"}}>
             Entrar
