@@ -115,6 +115,10 @@ export default function App() {
   const [relInicio, setRelInicio] = useState(new Date(hoje.getFullYear(),hoje.getMonth(),1).toISOString().split("T")[0]);
   const [relFim, setRelFim] = useState(hoje.toISOString().split("T")[0]);
   const [relStatusAberto, setRelStatusAberto] = useState(null);
+  const [sortClientes, setSortClientes] = useState("az");
+  const [sortVenc, setSortVenc] = useState("dia");
+  const [sortCobranca, setSortCobranca] = useState("status");
+  const [sortQuitados, setSortQuitados] = useState("az");
   const [graficoMeses, setGraficoMeses] = useState(6);
   // Anotações e contatos
   const [anotacaoTexto, setAnotacaoTexto] = useState("");
@@ -524,6 +528,35 @@ export default function App() {
     return diasSemana;
   };
 
+  const sortOps = (ops, tipo) => {
+    const sorted = [...ops];
+    if(tipo==="az") return sorted.sort((a,b)=>{const ca=getCliente(a.cliente_id),cb=getCliente(b.cliente_id);return(ca?.nome||"").localeCompare(cb?.nome||"");});
+    if(tipo==="za") return sorted.sort((a,b)=>{const ca=getCliente(a.cliente_id),cb=getCliente(b.cliente_id);return(cb?.nome||"").localeCompare(ca?.nome||"");});
+    if(tipo==="dia") return sorted.sort((a,b)=>(parseInt(a.dia_venc)||99)-(parseInt(b.dia_venc)||99));
+    if(tipo==="capital_desc") return sorted.sort((a,b)=>b.capital_atual-a.capital_atual);
+    if(tipo==="capital_asc") return sorted.sort((a,b)=>a.capital_atual-b.capital_atual);
+    if(tipo==="juros_desc") return sorted.sort((a,b)=>minJuros(b.capital_atual,b.taxa)-minJuros(a.capital_atual,a.taxa));
+    if(tipo==="status") return sorted.sort((a,b)=>{const o={atrasado:0,hoje:1,proximo:2,ok:3,sem_data:4};return(o[statusVenc(a.dia_venc,a.historico)]||3)-(o[statusVenc(b.dia_venc,b.historico)]||3);});
+    return sorted;
+  };
+
+  const sortClts = (lista, tipo) => {
+    const sorted = [...lista];
+    if(tipo==="az") return sorted.sort((a,b)=>a.nome.localeCompare(b.nome));
+    if(tipo==="za") return sorted.sort((a,b)=>b.nome.localeCompare(a.nome));
+    if(tipo==="saldo_desc") return sorted.sort((a,b)=>saldoTotal(b.id)-saldoTotal(a.id));
+    if(tipo==="juros_desc") return sorted.sort((a,b)=>empsAtivos(b.id).reduce((s,e)=>s+minJuros(e.capital_atual,e.taxa),0)-empsAtivos(a.id).reduce((s,e)=>s+minJuros(e.capital_atual,e.taxa),0));
+    return sorted;
+  };
+
+  const SortBar = ({value, onChange, options, T}) => (
+    <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
+      {options.map(([v,label])=>(
+        <button key={v} onClick={()=>onChange(v)} style={{padding:"4px 10px",borderRadius:6,border:`1px solid ${value===v?"#f59e0b":T.border}`,background:value===v?"#f59e0b18":T.card2,color:value===v?"#f59e0b":T.text2,cursor:"pointer",fontSize:11,fontWeight:value===v?700:400}}>{label}</button>
+      ))}
+    </div>
+  );
+
   const abas = [["inicio","🏠 Início"],["lista","👥 Clientes"],["vencimentos","📅 Venc."],["cobranca","🔔 Cobranças"],["quitados","✅ Quitados"],["rapidos","⚡ Rápidos"],["relatorio","📊 Relatório"]];
   const abasMenu = abas.map(a=>a[0]);
 
@@ -765,10 +798,11 @@ export default function App() {
               <button onClick={()=>window.print()} style={{...btnS(T),padding:"8px 12px"}}>🖨️</button>
               <span style={{color:T.text3,fontSize:12}}>{clientes.length}</span>
             </div>
+            <SortBar value={sortClientes} onChange={setSortClientes} options={[["az","A-Z"],["za","Z-A"],["saldo_desc","Maior saldo"],["juros_desc","Maior juros"]]} T={T}/>
             {loading?<div style={{textAlign:"center",padding:"60px 0",color:T.text3}}>Carregando...</div>
-            :clientes.filter(c=>c.nome?.toLowerCase().includes(busca.toLowerCase())||c.cpf?.includes(busca)).length===0?<div style={{textAlign:"center",padding:"60px 0",color:T.text3}}><div style={{fontSize:40,marginBottom:10}}>👥</div><div>Nenhum cliente</div></div>
+            :sortClts(clientes.filter(c=>c.nome?.toLowerCase().includes(busca.toLowerCase())||c.cpf?.includes(busca)),sortClientes).length===0?<div style={{textAlign:"center",padding:"60px 0",color:T.text3}}><div style={{fontSize:40,marginBottom:10}}>👥</div><div>Nenhum cliente</div></div>
             :<div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {clientes.filter(c=>c.nome?.toLowerCase().includes(busca.toLowerCase())||c.cpf?.includes(busca)).map(c=>{
+              {sortClts(clientes.filter(c=>c.nome?.toLowerCase().includes(busca.toLowerCase())||c.cpf?.includes(busca)),sortClientes).map(c=>{
                 const emps=empsCliente(c.id); const ativos=empsAtivos(c.id); const saldo=saldoTotal(c.id);
                 const temAlerta=ativos.some(e=>["hoje","atrasado","proximo"].includes(statusVenc(e.dia_venc,e.historico)));
                 const stC=statusCliente(emps); const stCInfo=SCI[stC];
@@ -808,13 +842,14 @@ export default function App() {
         {/* ===== VENCIMENTOS ===== */}
         {aba==="vencimentos"&&(
           <div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
               <div style={{fontWeight:700,fontSize:15}}>📅 Por Vencimento</div>
               <button onClick={()=>window.print()} style={{...btnS(T),padding:"7px 12px",fontSize:12}}>🖨️</button>
             </div>
-            {opsVenc.length===0?<div style={{textAlign:"center",padding:"60px 0",color:T.text3}}>Nenhuma operação ativa</div>
+            <SortBar value={sortVenc} onChange={setSortVenc} options={[["dia","Dia venc."],["az","A-Z"],["capital_desc","Maior saldo"],["juros_desc","Maior juros"]]} T={T}/>
+            {sortOps(opsVenc,sortVenc).length===0?<div style={{textAlign:"center",padding:"60px 0",color:T.text3}}>Nenhuma operação ativa</div>
             :<div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {opsVenc.map(e=>{const c=getCliente(e.cliente_id);const st=statusVenc(e.dia_venc,e.historico);const at=diasAtraso(e.dia_venc);return(
+              {sortOps(opsVenc,sortVenc).map(e=>{const c=getCliente(e.cliente_id);const st=statusVenc(e.dia_venc,e.historico);const at=diasAtraso(e.dia_venc);return(
                 <div key={e.id} onClick={()=>{setClienteSel(c);setEmpSel(e);setStep(3);setAba("detalhe");}} style={{background:T.card,border:`1px solid ${SC[st]}40`,borderLeft:`4px solid ${SC[st]}`,borderRadius:10,padding:12,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <div>
                     <div style={{fontWeight:700,fontSize:14}}>{c?.nome}</div>
@@ -844,7 +879,8 @@ export default function App() {
               <div style={{fontWeight:700,fontSize:15}}>🔔 Cobranças</div>
               {opsAlerta.length>0&&<button onClick={()=>{opsAlerta.forEach((e,i)=>{setTimeout(()=>{const c=getCliente(e.cliente_id);const st=statusVenc(e.dia_venc,e.historico);abrirWhatsCliente(c?.telefone,msgWhatsEmp(e,c,st));},i*1500);});}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:8,padding:"7px 12px",cursor:"pointer",fontWeight:700,fontSize:12}}>📲 Cobrar todos ({opsAlerta.length})</button>}
             </div>
-            <div style={{color:T.text2,fontSize:12,marginBottom:14}}>Atrasados, hoje e em breve</div>
+            <div style={{color:T.text2,fontSize:12,marginBottom:8}}>Atrasados, hoje e em breve</div>
+            <SortBar value={sortCobranca} onChange={setSortCobranca} options={[["status","Por status"],["az","A-Z"],["capital_desc","Maior saldo"],["juros_desc","Maior juros"]]} T={T}/>
             {opsAlerta.length===0?<div style={{textAlign:"center",padding:"60px 0",color:T.text3}}><div style={{fontSize:40,marginBottom:10}}>✅</div><div>Nenhuma cobrança!</div></div>
             :<div>{["atrasado","hoje","proximo"].map(tipo=>{
               const grupo=opsAlerta.filter(e=>statusVenc(e.dia_venc,e.historico)===tipo);
@@ -852,7 +888,7 @@ export default function App() {
               const labels={atrasado:"🔴 Em Atraso",hoje:"🟡 Vencem Hoje",proximo:"🟠 Em Breve"};
               return(<div key={tipo} style={{marginBottom:16}}>
                 <div style={{color:SC[tipo],fontWeight:700,fontSize:11,textTransform:"uppercase",marginBottom:8}}>{labels[tipo]}</div>
-                {grupo.map(e=>{const c=getCliente(e.cliente_id);const at=diasAtraso(e.dia_venc);const pg=e.historico?.filter(h=>(h.abateCapital||0)>0).length||0;return(
+                {sortOps(grupo,sortCobranca==="status"?"az":sortCobranca).map(e=>{const c=getCliente(e.cliente_id);const at=diasAtraso(e.dia_venc);const pg=e.historico?.filter(h=>(h.abateCapital||0)>0).length||0;return(
                   <div key={e.id} onClick={()=>{setClienteSel(c);setEmpSel(e);setStep(3);setAba("detalhe");}} style={{background:T.card,border:`1px solid ${SC[tipo]}40`,borderLeft:`4px solid ${SC[tipo]}`,borderRadius:10,padding:12,cursor:"pointer",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <div>
                       <div style={{fontWeight:700,fontSize:14}}>{c?.nome}</div>
@@ -885,7 +921,7 @@ export default function App() {
             </div>
             {opsQuitadas.length===0?<div style={{textAlign:"center",padding:"60px 0",color:T.text3}}>Nenhuma operação quitada</div>
             :<div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {opsQuitadas.map(e=>{const c=getCliente(e.cliente_id);return(
+              {sortOps(opsQuitadas,sortQuitados).map(e=>{const c=getCliente(e.cliente_id);return(
                 <div key={e.id} onClick={()=>{setClienteSel(c);setEmpSel(e);setStep(3);setAba("detalhe");}} style={{background:T.card,border:"1px solid #10b98130",borderLeft:"4px solid #10b981",borderRadius:10,padding:12,cursor:"pointer"}}>
                   <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
                     <div><div style={{fontWeight:700,fontSize:14}}>{c?.nome}</div><div style={{color:T.text2,fontSize:12}}>{c?.telefone}</div>{c?.ref1_nome&&<div style={{color:"#f59e0b",fontSize:11}}>📞 {c.ref1_nome}</div>}</div>
