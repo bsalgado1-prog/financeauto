@@ -434,6 +434,23 @@ export default function App() {
   };
 
   // Export para Excel/CSV
+  const excluirTudo = async () => {
+    if(!window.confirm("⚠️ ATENÇÃO! Isso vai excluir TODOS os clientes e operações. Esta ação NÃO pode ser desfeita. Tem certeza?")) return;
+    if(!window.confirm("Última confirmação: excluir TUDO mesmo?")) return;
+    setSalvando(true);
+    try {
+      // Delete all emprestimos
+      await api("DELETE", "/emprestimos?id=gt.0");
+      // Delete all rapidos
+      await api("DELETE", "/rapidos?id=gt.0");
+      // Delete all clientes
+      await api("DELETE", "/clientes?id=gt.0");
+      setClientes([]); setEmprestimos([]); setRapidos([]);
+      showToast("Tudo excluído! Sistema zerado.");
+      setAba("inicio");
+    } catch(e){showToast("Erro ao excluir: "+e.message,"erro");} finally{setSalvando(false);}
+  };
+
   const exportarCSV = () => {
     const linhas = [["Nome","CPF","Telefone","Ref1 Nome","Ref1 Tel","Capital","Saldo","Taxa","Tipo","Dia Venc","Status","Juros Mensal"]];
     opsAtivas.forEach(e=>{
@@ -495,7 +512,7 @@ export default function App() {
     return diasSemana;
   };
 
-  const abas = [["inicio","🏠"],["lista","👥"],["vencimentos","📅"],["cobranca","🔔"],["quitados","✅"],["rapidos","⚡"],["relatorio","📊"]];
+  const abas = [["inicio","🏠 Início"],["lista","👥 Clientes"],["vencimentos","📅 Venc."],["cobranca","🔔 Cobranças"],["quitados","✅ Quitados"],["rapidos","⚡ Rápidos"],["relatorio","📊 Relatório"]];
   const abasMenu = abas.map(a=>a[0]);
 
   // Busca global
@@ -1311,6 +1328,19 @@ export default function App() {
                   <button onClick={exportarCSV} style={{...btnP}}>📥 Exportar CSV</button>
                 </div>
               </div>
+
+              {/* Excluir tudo - apenas admin */}
+              {userAtual.admin&&(
+                <div style={{background:T.card,border:"1px solid #ef444440",borderRadius:10,padding:14,marginBottom:16}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <div>
+                      <div style={{fontWeight:700,fontSize:13,color:"#ef4444"}}>🗑️ Zerar Sistema</div>
+                      <div style={{color:T.text2,fontSize:12,marginTop:4}}>Exclui todos os clientes e operações. Irreversível!</div>
+                    </div>
+                    <button onClick={excluirTudo} disabled={salvando} style={{background:"#ef444420",border:"1px solid #ef444440",color:"#ef4444",borderRadius:8,padding:"8px 14px",cursor:"pointer",fontWeight:700,fontSize:13,opacity:salvando?0.6:1}}>🗑️ Zerar</button>
+                  </div>
+                </div>
+              )}
 
               {/* Lista impressão */}
               <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:10,padding:14,marginBottom:16}}>
