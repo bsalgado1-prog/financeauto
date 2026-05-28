@@ -680,7 +680,7 @@ export default function App() {
               <div style={{background:T.card,border:"1px solid #ef444440",borderRadius:10,padding:14,marginBottom:16}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                   <div style={{fontWeight:700,fontSize:13,color:"#ef4444"}}>🔔 Cobranças pendentes</div>
-                  <button onClick={()=>{const lista=opsAlerta.filter(e=>["hoje","atrasado"].includes(statusVenc(e.dia_venc,e.historico)));lista.forEach((e,i)=>{setTimeout(()=>{const c=getCliente(e.cliente_id);const st=statusVenc(e.dia_venc,e.historico);abrirWhatsCliente(c?.telefone,msgWhatsEmp(e,c,st));},i*1500);});}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:8,padding:"7px 12px",cursor:"pointer",fontWeight:700,fontSize:12}}>📲 Cobrar todos</button>
+                  <button onClick={()=>{const listaF=opsAlerta.filter(e=>["hoje","atrasado"].includes(statusVenc(e.dia_venc,e.historico)));const pC={};listaF.forEach(e=>{if(!pC[e.cliente_id])pC[e.cliente_id]={c:getCliente(e.cliente_id),ops:[]};pC[e.cliente_id].ops.push(e);});Object.values(pC).forEach(({c,ops},i)=>{setTimeout(()=>{const nm=primeiroNome(c?.nome);if(ops.length===1){abrirWhatsCliente(c?.telefone,msgWhatsEmp(ops[0],c,statusVenc(ops[0].dia_venc,ops[0].historico)));}else{const lst=ops.map(e=>"• "+(e.nome_tomador||"Op.")+" - Dia "+e.dia_venc+" - "+fmt(minJuros(e.capital_atual,e.taxa))).join("\n");const tA=ops.some(e=>statusVenc(e.dia_venc,e.historico)==="atrasado");abrirWhatsCliente(c?.telefone,tA?"Olá "+nm+", tudo bem? Temos pagamentos em atraso:\n\n"+lst+"\n\nPodemos acertar?":"Olá "+nm+", tudo bem? Pagamentos do dia:\n\n"+lst+"\n\nQualquer dúvida estou à disposição!");}},i*1500);});}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:8,padding:"7px 12px",cursor:"pointer",fontWeight:700,fontSize:12}}>📲 Cobrar todos</button>
                 </div>
                 {opsAlerta.filter(e=>["hoje","atrasado"].includes(statusVenc(e.dia_venc,e.historico))).slice(0,5).map(e=>{
                   const c=getCliente(e.cliente_id); const st=statusVenc(e.dia_venc,e.historico);
@@ -877,7 +877,16 @@ export default function App() {
           <div>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
               <div style={{fontWeight:700,fontSize:15}}>🔔 Cobranças</div>
-              {opsAlerta.length>0&&<button onClick={()=>{opsAlerta.forEach((e,i)=>{setTimeout(()=>{const c=getCliente(e.cliente_id);const st=statusVenc(e.dia_venc,e.historico);abrirWhatsCliente(c?.telefone,msgWhatsEmp(e,c,st));},i*1500);});}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:8,padding:"7px 12px",cursor:"pointer",fontWeight:700,fontSize:12}}>📲 Cobrar todos ({opsAlerta.length})</button>}
+              {opsAlerta.length>0&&<button onClick={()=>{
+                // Agrupa por cliente
+                const porCliente = {};
+                opsAlerta.forEach(e=>{
+                  const cid = e.cliente_id;
+                  if(!porCliente[cid]) porCliente[cid] = {c:getCliente(cid), ops:[]};
+                  porCliente[cid].ops.push(e);
+                });
+                Object.values(porCliente).forEach(({c,ops},i)=>{setTimeout(()=>{const nm=primeiroNome(c?.nome);if(ops.length===1){abrirWhatsCliente(c?.telefone,msgWhatsEmp(ops[0],c,statusVenc(ops[0].dia_venc,ops[0].historico)));}else{const lst=ops.map(e=>"• "+(e.nome_tomador||"Op.")+" - Dia "+e.dia_venc+" - "+fmt(minJuros(e.capital_atual,e.taxa))).join("\n");const tA=ops.some(e=>statusVenc(e.dia_venc,e.historico)==="atrasado");abrirWhatsCliente(c?.telefone,tA?"Olá "+nm+", tudo bem? Temos pagamentos em atraso:\n\n"+lst+"\n\nPodemos acertar?":"Olá "+nm+", tudo bem? Pagamentos do dia:\n\n"+lst+"\n\nQualquer dúvida estou à disposição!");}},i*1500);});
+              }} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:8,padding:"7px 12px",cursor:"pointer",fontWeight:700,fontSize:12}}>📲 Cobrar todos ({Object.keys(opsAlerta.reduce((acc,e)=>{acc[e.cliente_id]=true;return acc},{})).length} clientes)</button>}
             </div>
             <div style={{color:T.text2,fontSize:12,marginBottom:8}}>Atrasados, hoje e em breve</div>
             <SortBar value={sortCobranca} onChange={setSortCobranca} options={[["status","Por status"],["az","A-Z"],["capital_desc","Maior saldo"],["juros_desc","Maior juros"]]} T={T}/>
