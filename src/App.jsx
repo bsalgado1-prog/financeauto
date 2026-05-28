@@ -434,6 +434,18 @@ export default function App() {
   };
 
   // Export para Excel/CSV
+  const excluirOperacao = async (empId, clienteId) => {
+    if(!window.confirm("Excluir esta operação?")) return;
+    setSalvando(true);
+    try {
+      await api("DELETE", `/emprestimos?id=eq.${empId}`);
+      showToast("Operação excluída!");
+      await carregar();
+      // If in detalhe, go back to lista if no more ops
+      if(empSel?.id===empId) { setEmpSel(null); setStep(2); }
+    } catch(e){showToast("Erro.","erro");} finally{setSalvando(false);}
+  };
+
   const excluirTudo = async () => {
     if(!window.confirm("⚠️ ATENÇÃO! Isso vai excluir TODOS os clientes e operações. Esta ação NÃO pode ser desfeita. Tem certeza?")) return;
     if(!window.confirm("Última confirmação: excluir TUDO mesmo?")) return;
@@ -811,7 +823,10 @@ export default function App() {
                     <div style={{fontWeight:800,fontSize:20,color:SC[st]}}>Dia {e.dia_venc||"—"}</div>
                     <div style={{color:SC[st],fontSize:11,fontWeight:600}}>{SL[st]}</div>
                     {st==="atrasado"&&<div style={{color:"#ef4444",fontSize:10}}>{at} dia(s)</div>}
-                    <button onClick={ev=>{ev.stopPropagation();const n=primeiroNome(c?.nome);const j=fmt(minJuros(e.capital_atual,e.taxa));const s=fmt(e.capital_atual);const msg=st==="atrasado"?`Olá ${n}, tudo bem? Passando para avisar que seu pagamento está em atraso há ${at} dia(s). Venceu dia ${e.dia_venc}, valor de ${j}. Saldo: ${s}. Podemos acertar?`:`Olá ${n}, tudo bem? Passando para lembrar do pagamento do dia ${e.dia_venc}. Valor: ${j}. Saldo: ${s}.`;abrirWhatsCliente(c?.telefone,msg);}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:6,padding:"3px 8px",cursor:"pointer",fontWeight:700,fontSize:11,marginTop:4}}>📲</button>
+                    <div style={{display:"flex",gap:4,marginTop:4}}>
+                      <button onClick={ev=>{ev.stopPropagation();const n=primeiroNome(c?.nome);const j=fmt(minJuros(e.capital_atual,e.taxa));const msg=st==="atrasado"?`Olá ${n}, tudo bem? Passando para avisar que seu pagamento está em atraso há ${at} dia(s). Venceu dia ${e.dia_venc}, valor de ${j}. Podemos acertar?`:`Olá ${n}, tudo bem? Passando para lembrar do pagamento do dia ${e.dia_venc}. Valor: ${j}.`;abrirWhatsCliente(c?.telefone,msg);}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:6,padding:"3px 8px",cursor:"pointer",fontWeight:700,fontSize:11}}>📲</button>
+                      <button onClick={ev=>{ev.stopPropagation();excluirOperacao(e.id,e.cliente_id);}} style={{background:"#ef444420",border:"1px solid #ef444440",color:"#ef4444",borderRadius:6,padding:"3px 8px",cursor:"pointer",fontWeight:700,fontSize:11}}>🗑️</button>
+                    </div>
                   </div>
                 </div>
               );})}
@@ -845,7 +860,10 @@ export default function App() {
                     <div style={{textAlign:"right"}}>
                       <div style={{fontWeight:800,fontSize:20,color:SC[tipo]}}>Dia {e.dia_venc}</div>
                       {tipo==="atrasado"&&<div style={{color:"#ef4444",fontSize:11,fontWeight:700}}>{at} dias</div>}
-                      <button onClick={ev=>{ev.stopPropagation();abrirWhatsCliente(c?.telefone,msgWhatsEmp(e,c,tipo));}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:6,padding:"4px 8px",cursor:"pointer",fontWeight:700,fontSize:11,marginTop:4}}>📲</button>
+                      <div style={{display:"flex",gap:4,marginTop:4}}>
+                        <button onClick={ev=>{ev.stopPropagation();abrirWhatsCliente(c?.telefone,msgWhatsEmp(e,c,tipo));}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:6,padding:"4px 8px",cursor:"pointer",fontWeight:700,fontSize:11}}>📲</button>
+                        <button onClick={ev=>{ev.stopPropagation();excluirOperacao(e.id,e.cliente_id);}} style={{background:"#ef444420",border:"1px solid #ef444440",color:"#ef4444",borderRadius:6,padding:"4px 8px",cursor:"pointer",fontWeight:700,fontSize:11}}>🗑️</button>
+                      </div>
                     </div>
                   </div>
                 );})}
@@ -1012,6 +1030,9 @@ export default function App() {
                     <Chip label="Capital" val={fmt(e.capital)} color="#f59e0b" T={T}/><Chip label="Saldo" val={fmt(e.capital_atual)} color={quitado?"#10b981":"#ef4444"} T={T}/><Chip label="Taxa" val={`${e.taxa}%`} color="#8b5cf6" T={T}/><Chip label="Mínimo" val={quitado?"—":fmt(minJuros(e.capital_atual,e.taxa))} color="#3b82f6" T={T}/>
                   </div>
                   <div style={{background:T.card2,borderRadius:4,height:4,overflow:"hidden"}}><div style={{height:"100%",width:`${Math.min(100,pct)}%`,background:quitado?"#10b981":"linear-gradient(90deg,#f59e0b,#ef4444)",borderRadius:4}}/></div>
+                  <div style={{display:"flex",justifyContent:"flex-end",marginTop:8}}>
+                    <button onClick={ev=>{ev.stopPropagation();excluirOperacao(e.id,e.cliente_id);}} style={{background:"#ef444420",border:"1px solid #ef444440",color:"#ef4444",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontWeight:700,fontSize:11}}>🗑️ Excluir operação</button>
+                  </div>
                 </div>);
               })}
             </div>}
@@ -1350,7 +1371,7 @@ export default function App() {
                 </div>
                 <div style={{overflowX:"auto"}}>
                   <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
-                    <thead><tr style={{background:T.card2,borderBottom:`2px solid ${T.border}`}}>{["#","Nome","Referência","Data Op.","Venc.","Capital","Saldo","Juros/Parc.","Taxa","Tipo","Status"].map(h=><th key={h} style={{textAlign:"left",padding:"8px 8px",color:T.text2,fontWeight:700,fontSize:10,whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead>
+                    <thead><tr style={{background:T.card2,borderBottom:`2px solid ${T.border}`}}>{["#","Nome","Referência","Data Op.","Venc.","Capital","Saldo","Juros/Parc.","Taxa","Tipo","Status",""].map(h=><th key={h} style={{textAlign:"left",padding:"8px 8px",color:T.text2,fontWeight:700,fontSize:10,whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead>
                     <tbody>{(()=>{let rows=[],idx=1;
                       opsAtivas.sort((a,b)=>{const ca=getCliente(a.cliente_id),cb=getCliente(b.cliente_id);return(ca?.nome||"").localeCompare(cb?.nome||"");}).forEach(e=>{
                         const c=getCliente(e.cliente_id); const st=statusVenc(e.dia_venc,e.historico);
@@ -1367,6 +1388,7 @@ export default function App() {
                           <td style={{padding:"7px 8px",color:"#8b5cf6"}}>{e.taxa}%</td>
                           <td style={{padding:"7px 8px",color:T.text2,fontSize:10}}>{e.tipo==="minimo"?"Juros":"Parcela"}</td>
                           <td style={{padding:"7px 8px"}}><span style={{background:SC[st]+"20",color:SC[st],padding:"2px 6px",borderRadius:6,fontSize:9,fontWeight:700,whiteSpace:"nowrap"}}>{SL[st]}</span></td>
+                          <td style={{padding:"7px 8px"}}><button onClick={()=>excluirOperacao(e.id,e.cliente_id)} style={{background:"#ef444420",border:"none",color:"#ef4444",borderRadius:4,padding:"3px 7px",cursor:"pointer",fontSize:10,fontWeight:700}}>🗑️</button></td>
                         </tr>);
                       });
                       return rows;
@@ -1400,4 +1422,3 @@ const inp = (T) => ({width:"100%",background:T?.inp||"#0d1e40",border:`1px solid
 const lbl = (T) => ({display:"block",color:T?.text2||"#7a9cc8",fontSize:11,marginBottom:4,fontWeight:500});
 const btnP = {background:"linear-gradient(135deg,#f59e0b,#ef4444)",color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontWeight:700,fontSize:13,cursor:"pointer"};
 const btnS = (T) => ({background:T?.btn||"#1f2b47",color:T?.btnText||"#e2eaf8",border:`1px solid ${T?.border||"#2a3550"}`,borderRadius:8,padding:"8px 16px",fontWeight:600,fontSize:13,cursor:"pointer"});
-
