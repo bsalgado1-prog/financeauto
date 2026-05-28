@@ -75,7 +75,7 @@ const SL = { hoje:"Vence hoje",atrasado:"Atrasado",proximo:"Em breve",ok:"Em dia
 const SCI = { em_dia:{label:"🟢 Em dia",color:"#10b981"}, atrasa_as_vezes:{label:"🟡 Atrasa às vezes",color:"#f59e0b"}, atrasa_sempre:{label:"🟠 Atrasa sempre",color:"#f97316"}, inadimplente:{label:"🔴 Inadimplente",color:"#ef4444"}, mau_pagador:{label:"⚫ Mau pagador",color:"#94a3b8"}, quitado:{label:"✅ Quitado",color:"#10b981"}, sem_ops:{label:"—",color:"#64748b"} };
 const ESTADOS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
 const emptyC = {nome:"",cpf:"",rg:"",nascimento:"",telefone:"",email:"",endereco:"",cidade:"",estado:"",cep:"",ref1_nome:"",ref1_tel:"",ref1_par:"",ref2_nome:"",ref2_tel:"",ref2_par:""};
-const emptyE = {capital:"",taxa:"",tipo:"minimo",num_parcelas:"1",data_op:today(),dia_venc:"",obs:"",cliente_tipo:"novo",saldo_atual:"",frequencia_pag:"mensal"};
+const emptyE = {capital:"",taxa:"",tipo:"minimo",num_parcelas:"1",data_op:today(),dia_venc:"",obs:"",cliente_tipo:"novo",saldo_atual:"",frequencia_pag:"mensal",nome_tomador:""};
 const emptyR = {nome:"",telefone:"",ref1_nome:"",ref1_tel:"",capital:"",valor_parcela:"",frequencia:"semanal",dia_semana:"",obs:""};
 
 const abrirWhatsCliente = (tel, msg) => { const n=(tel||"").replace(/\D/g,""); if(!n){alert("Sem telefone.");return;} const nf=n.startsWith("55")?n:"55"+n; window.open(`https://wa.me/${nf}?text=${encodeURIComponent(msg)}`,"_blank"); };
@@ -188,7 +188,7 @@ export default function App() {
       const capital=parseFloat(ef.capital);
       const isAntigo=(ef.cliente_tipo||"novo")==="antigo";
       const saldoAtual=isAntigo&&ef.saldo_atual?parseFloat(ef.saldo_atual):capital;
-      await db.emprestimos.criar({cliente_id:clienteSel.id,capital,taxa:parseFloat(ef.taxa),tipo:ef.tipo,num_parcelas:parseInt(ef.num_parcelas)||1,data_op:ef.data_op,dia_venc:ef.dia_venc,obs:ef.obs,capital_atual:saldoAtual,historico:[],frequencia_pag:ef.frequencia_pag||"mensal"});
+      await db.emprestimos.criar({cliente_id:clienteSel.id,capital,taxa:parseFloat(ef.taxa),tipo:ef.tipo,num_parcelas:parseInt(ef.num_parcelas)||1,data_op:ef.data_op,dia_venc:ef.dia_venc,obs:ef.obs,capital_atual:saldoAtual,historico:[],frequencia_pag:ef.frequencia_pag||"mensal",nome_tomador:ef.nome_tomador||""});
       setEf(emptyE); setModoForm(null); showToast("Operação cadastrada!"); await carregar(); setStep(2);
     } catch(e){showToast("Erro.","erro");} finally{setSalvando(false);}
   };
@@ -816,6 +816,7 @@ export default function App() {
                 <div key={e.id} onClick={()=>{setClienteSel(c);setEmpSel(e);setStep(3);setAba("detalhe");}} style={{background:T.card,border:`1px solid ${SC[st]}40`,borderLeft:`4px solid ${SC[st]}`,borderRadius:10,padding:12,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <div>
                     <div style={{fontWeight:700,fontSize:14}}>{primeiroNome(c?.nome)}</div>
+                    {e.nome_tomador&&<div style={{color:"#f59e0b",fontSize:12,fontWeight:700}}>👤 {e.nome_tomador}</div>}
                     {c?.ref1_nome&&<div style={{color:"#f59e0b",fontSize:11}}>📞 {c.ref1_nome} · {c.ref1_tel}</div>}
                     <div style={{color:T.text2,fontSize:12,marginTop:2}}>Saldo: <b style={{color:"#ef4444"}}>{fmt(e.capital_atual)}</b> · Min: <b style={{color:"#3b82f6"}}>{fmt(minJuros(e.capital_atual,e.taxa))}</b></div>
                   </div>
@@ -853,6 +854,7 @@ export default function App() {
                   <div key={e.id} onClick={()=>{setClienteSel(c);setEmpSel(e);setStep(3);setAba("detalhe");}} style={{background:T.card,border:`1px solid ${SC[tipo]}40`,borderLeft:`4px solid ${SC[tipo]}`,borderRadius:10,padding:12,cursor:"pointer",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <div>
                       <div style={{fontWeight:700,fontSize:14}}>{primeiroNome(c?.nome)}</div>
+                    {e.nome_tomador&&<div style={{color:"#f59e0b",fontSize:12,fontWeight:700}}>👤 {e.nome_tomador}</div>}
                       {c?.ref1_nome&&<div style={{color:"#f59e0b",fontSize:11}}>📞 {c.ref1_nome} · {c.ref1_tel}</div>}
                       <div style={{color:T.text2,fontSize:12,marginTop:2}}>Saldo: <b style={{color:"#ef4444"}}>{fmt(e.capital_atual)}</b> · Pagar: <b style={{color:SC[tipo]}}>{fmt(minJuros(e.capital_atual,e.taxa))}</b></div>
                       {e.tipo==="parcelado"&&<div style={{color:"#8b5cf6",fontSize:11}}>Parcela <b>{pg+1}/{e.num_parcelas}</b> · <b>{fmt(pmt(e.capital,e.taxa,e.num_parcelas))}</b></div>}
@@ -1024,6 +1026,7 @@ export default function App() {
                 return(<div key={e.id} onClick={()=>{setEmpSel(e);setStep(3);}} style={{background:T.card,border:`1px solid ${quitado?"#10b98130":T.border}`,borderLeft:`4px solid ${quitado?"#10b981":SC[st]}`,borderRadius:10,padding:14,cursor:"pointer"}}>
                   <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
                     <div style={{fontWeight:700,fontSize:12,color:T.text2}}>Op. {i+1} · {e.tipo==="minimo"?"Só juros":"Parcelado"} · {e.frequencia_pag==="semanal"?"📆 Semanal":e.frequencia_pag==="diario"?"☀️ Diário":"📅 Mensal"} · Dia {e.dia_venc}</div>
+                  {e.nome_tomador&&<div style={{fontWeight:800,fontSize:14,color:"#f59e0b",marginTop:2}}>👤 {e.nome_tomador}</div>}
                     <span style={{background:quitado?"#10b98118":SC[st]+"18",color:quitado?"#10b981":SC[st],padding:"2px 8px",borderRadius:20,fontSize:11,fontWeight:700}}>{quitado?"✅":SL[st]}</span>
                   </div>
                   <div style={{display:"flex",gap:14,marginBottom:8,flexWrap:"wrap"}}>
@@ -1096,6 +1099,7 @@ export default function App() {
             {modoForm==="emprestimo"&&(
               <div style={{background:T.card,border:"1px solid #f59e0b40",borderRadius:12,padding:16,marginTop:14}}>
                 <div style={{fontWeight:700,marginBottom:14,fontSize:14}}>💰 Nova Operação</div>
+                <div style={{marginBottom:10}}><label style={lbl(T)}>Nome do Tomador</label><input name="nome_tomador" value={ef.nome_tomador} onChange={e=>setEf(f=>({...f,[e.target.name]:e.target.value}))} style={inp(T)} placeholder="Ex: ANGELA, ADRIANO..."/></div>
                 <Grid2>
                   <F label="Capital (R$) *" name="capital" type="number" value={ef.capital} onChange={e=>setEf(f=>({...f,[e.target.name]:e.target.value}))} ph="0,00" T={T}/>
                   <F label="Taxa Mensal (%) *" name="taxa" type="number" step="0.1" value={ef.taxa} onChange={e=>setEf(f=>({...f,[e.target.name]:e.target.value}))} ph="Ex: 20" T={T}/>
@@ -1141,6 +1145,7 @@ export default function App() {
                     <div style={{fontWeight:800,fontSize:16}}>{c.nome}</div>
                     <div style={{color:T.text2,fontSize:12,marginBottom:4}}>{c.telefone}</div>
                     <div style={{color:T.text2,fontSize:12}}>Op. {opIdx} · {e.tipo==="minimo"?"Só juros":"Parcelado"} · {e.frequencia_pag==="semanal"?"📆 Semanal":e.frequencia_pag==="diario"?"☀️ Diário":"📅 Mensal"} · Dia {e.dia_venc}</div>
+                    {e.nome_tomador&&<div style={{fontWeight:800,fontSize:15,color:"#f59e0b",marginTop:2}}>👤 {e.nome_tomador}</div>}
                     {e.tipo==="parcelado"&&<div style={{color:"#8b5cf6",fontSize:12}}>Parcelas: <b>{parcelasPagas}</b> pagas · <b>{Math.max(0,(totalParcelas||0)-parcelasPagas)}</b> em aberto</div>}
                     {!quitado&&<div style={{color:SC[st],fontSize:12,fontWeight:600,marginTop:2}}>{SL[st]}{st==="atrasado"?` (${at} dias)`:""}</div>}
                   </div>
