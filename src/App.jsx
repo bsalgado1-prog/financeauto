@@ -610,6 +610,7 @@ export default function App() {
                 {label:"Em atraso",val:opsAlerta.filter(e=>statusVenc(e.dia_venc,e.historico)==="atrasado").length+" clientes",color:"#ef4444",icon:"⚠️"},
                 {label:"Saldo em aberto",val:fmt(opsAtivas.reduce((s,e)=>s+e.capital_atual,0)),color:"#3b82f6",icon:"💰"},
                 {label:"Ops. ativas",val:opsAtivas.length+" operações",color:"#8b5cf6",icon:"📋"},
+                {label:"Juros total/mês",val:fmt(opsAtivas.reduce((s,e)=>s+minJuros(e.capital_atual,e.taxa),0)),color:"#10b981",icon:"📈"},
               ].map(({label,val,color,icon})=>(
                 <div key={label} style={{background:T.card,border:`1px solid ${T.border}`,borderLeft:`4px solid ${color}`,borderRadius:10,padding:14}}>
                   <div style={{fontSize:20,marginBottom:4}}>{icon}</div>
@@ -787,6 +788,7 @@ export default function App() {
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                       <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
                         <Chip label="Saldo" val={fmt(saldo)} color={saldo>0?"#ef4444":"#10b981"} T={T}/>
+                        <Chip label="Juros/mês" val={fmt(ativos.reduce((s,e)=>s+minJuros(e.capital_atual,e.taxa),0))} color="#10b981" T={T}/>
                         <Chip label="Ops" val={`${ativos.length}/${emps.length}`} color="#8b5cf6" T={T}/>
                         {ativos.length>0&&<Chip label="Venc." val={ativos.map(e=>`Dia ${e.dia_venc}`).join("·")} color="#f59e0b" T={T}/>}
                       </div>
@@ -818,7 +820,7 @@ export default function App() {
                     <div style={{fontWeight:700,fontSize:14}}>{c?.nome}</div>
                     {e.nome_tomador&&<div style={{color:"#f59e0b",fontSize:12,fontWeight:700}}>👤 {e.nome_tomador}</div>}
                     {c?.ref1_nome&&<div style={{color:"#f59e0b",fontSize:11}}>📞 {c.ref1_nome} · {c.ref1_tel}</div>}
-                    <div style={{color:T.text2,fontSize:12,marginTop:2}}>Saldo: <b style={{color:"#ef4444"}}>{fmt(e.capital_atual)}</b> · Min: <b style={{color:"#3b82f6"}}>{fmt(minJuros(e.capital_atual,e.taxa))}</b></div>
+                    <div style={{color:T.text2,fontSize:12,marginTop:2}}>Saldo: <b style={{color:"#ef4444"}}>{fmt(e.capital_atual)}</b> · Juros: <b style={{color:"#10b981"}}>{fmt(minJuros(e.capital_atual,e.taxa))}</b></div>
                   </div>
                   <div style={{textAlign:"right"}}>
                     <div style={{fontWeight:800,fontSize:20,color:SC[st]}}>Dia {e.dia_venc||"—"}</div>
@@ -856,7 +858,7 @@ export default function App() {
                       <div style={{fontWeight:700,fontSize:14}}>{c?.nome}</div>
                     {e.nome_tomador&&<div style={{color:"#f59e0b",fontSize:12,fontWeight:700}}>👤 {e.nome_tomador}</div>}
                       {c?.ref1_nome&&<div style={{color:"#f59e0b",fontSize:11}}>📞 {c.ref1_nome} · {c.ref1_tel}</div>}
-                      <div style={{color:T.text2,fontSize:12,marginTop:2}}>Saldo: <b style={{color:"#ef4444"}}>{fmt(e.capital_atual)}</b> · Pagar: <b style={{color:SC[tipo]}}>{fmt(minJuros(e.capital_atual,e.taxa))}</b></div>
+                      <div style={{color:T.text2,fontSize:12,marginTop:2}}>Saldo: <b style={{color:"#ef4444"}}>{fmt(e.capital_atual)}</b> · Juros: <b style={{color:"#10b981"}}>{fmt(minJuros(e.capital_atual,e.taxa))}</b></div>
                       {e.tipo==="parcelado"&&<div style={{color:"#8b5cf6",fontSize:11}}>Parcela <b>{pg+1}/{e.num_parcelas}</b> · <b>{fmt(pmt(e.capital,e.taxa,e.num_parcelas))}</b></div>}
                     </div>
                     <div style={{textAlign:"right"}}>
@@ -1015,6 +1017,7 @@ export default function App() {
                 <Chip label="Saldo total" val={fmt(saldoTotal(clienteSel.id))} color="#ef4444" T={T}/>
                 <Chip label="Ops ativas" val={empsAtivos(clienteSel.id).length} color="#3b82f6" T={T}/>
                 <Chip label="Total ops" val={empsCliente(clienteSel.id).length} color="#8b5cf6" T={T}/>
+                <Chip label="Juros/mês" val={fmt(empsAtivos(clienteSel.id).reduce((s,e)=>s+minJuros(e.capital_atual,e.taxa),0))} color="#10b981" T={T}/>
               </div>
             </div>
 
@@ -1279,7 +1282,7 @@ export default function App() {
               <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:10,padding:14,marginBottom:16}}>
                 <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>📋 Situação Atual</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
-                  {[["Saldo em aberto",fmt(opsAtivas.reduce((s,e)=>s+e.capital_atual,0)),"#ef4444"],["Ops ativas",opsAtivas.length+" ops","#3b82f6"],["Inadimplentes",opsAlerta.filter(e=>statusVenc(e.dia_venc,e.historico)==="atrasado").length+" ops","#f97316"]].map(([l,v,color])=>(<div key={l} style={{textAlign:"center"}}><div style={{color:T.text2,fontSize:10,marginBottom:4}}>{l.toUpperCase()}</div><div style={{fontWeight:800,fontSize:15,color}}>{v}</div></div>))}
+                  {[["Saldo em aberto",fmt(opsAtivas.reduce((s,e)=>s+e.capital_atual,0)),"#ef4444"],["Juros total/mês",fmt(opsAtivas.reduce((s,e)=>s+minJuros(e.capital_atual,e.taxa),0)),"#10b981"],["Ops ativas",opsAtivas.length+" ops","#3b82f6"],["Inadimplentes",opsAlerta.filter(e=>statusVenc(e.dia_venc,e.historico)==="atrasado").length+" ops","#f97316"]].map(([l,v,color])=>(<div key={l} style={{textAlign:"center"}}><div style={{color:T.text2,fontSize:10,marginBottom:4}}>{l.toUpperCase()}</div><div style={{fontWeight:800,fontSize:15,color}}>{v}</div></div>))}
                 </div>
               </div>
 
