@@ -105,6 +105,8 @@ export default function App() {
   const [novoPag, setNovoPag] = useState({valor:"",data:today(),obs:"",multa:""});
   const [editandoPag, setEditandoPag] = useState(null);
   const [mostrarVoltarCobranca, setMostrarVoltarCobranca] = useState(false);
+  const [editandoPromessa, setEditandoPromessa] = useState(null); // empId
+  const [dataPromessa, setDataPromessa] = useState("");
   // Rapidos
   const [rapidoSel, setRapidoSel] = useState(null); const [rf, setRf] = useState(emptyR); const [mostrarFormR, setMostrarFormR] = useState(false);
   const [novoPagR, setNovoPagR] = useState({valor:"",data:today(),obs:""});
@@ -250,6 +252,17 @@ export default function App() {
       } catch(err){showToast("Erro ao salvar foto.","erro");} finally{setSalvando(false);}
     };
     reader.readAsDataURL(file);
+  };
+
+  const salvarPromessa = async (empId) => {
+    setSalvando(true);
+    try {
+      await db.emprestimos.atualizar(empId, {data_prometida: dataPromessa||null});
+      showToast("Data prometida salva!");
+      setEditandoPromessa(null); setDataPromessa("");
+      await carregar();
+      const es = await db.emprestimos.listar(); setEmprestimos(es||[]);
+    } catch(e){showToast("Erro.","erro");} finally{setSalvando(false);}
   };
 
   const salvarAnotacao = async () => {
@@ -859,6 +872,7 @@ export default function App() {
                   <div>
                     <div style={{fontWeight:700,fontSize:14}}>{c?.nome}</div>
                     {e.nome_tomador&&<div style={{color:"#f59e0b",fontSize:12,fontWeight:700}}>👤 {e.nome_tomador}</div>}
+                    {e.data_prometida&&<div style={{color:"#8b5cf6",fontSize:11,fontWeight:700}}>⏳ Prometeu: {fmtDate(e.data_prometida)}</div>}
                     {c?.ref1_nome&&<div style={{color:"#f59e0b",fontSize:11}}>📞 {c.ref1_nome} · {c.ref1_tel}</div>}
                     <div style={{color:T.text2,fontSize:12,marginTop:2}}>Saldo: <b style={{color:"#ef4444"}}>{fmt(e.capital_atual)}</b> · Juros: <b style={{color:"#10b981"}}>{fmt(minJuros(e.capital_atual,e.taxa))}</b></div>
                   </div>
@@ -907,6 +921,7 @@ export default function App() {
                     <div>
                       <div style={{fontWeight:700,fontSize:14}}>{c?.nome}</div>
                     {e.nome_tomador&&<div style={{color:"#f59e0b",fontSize:12,fontWeight:700}}>👤 {e.nome_tomador}</div>}
+                    {e.data_prometida&&<div style={{color:"#8b5cf6",fontSize:11,fontWeight:700}}>⏳ Prometeu: {fmtDate(e.data_prometida)}</div>}
                       {c?.ref1_nome&&<div style={{color:"#f59e0b",fontSize:11}}>📞 {c.ref1_nome} · {c.ref1_tel}</div>}
                       <div style={{color:T.text2,fontSize:12,marginTop:2}}>Saldo: <b style={{color:"#ef4444"}}>{fmt(e.capital_atual)}</b> · Juros: <b style={{color:"#10b981"}}>{fmt(minJuros(e.capital_atual,e.taxa))}</b></div>
                       {e.tipo==="parcelado"&&<div style={{color:"#8b5cf6",fontSize:11}}>Parcela <b>{pg+1}/{e.num_parcelas}</b> · <b>{fmt(pmt(e.capital,e.taxa,e.num_parcelas))}</b></div>}
@@ -915,6 +930,16 @@ export default function App() {
                       <div style={{fontWeight:800,fontSize:20,color:SC[tipo]}}>Dia {e.dia_venc}</div>
                       {tipo==="atrasado"&&<div style={{color:"#ef4444",fontSize:11,fontWeight:700}}>{at} dias</div>}
                       {(()=>{const hoje2=new Date();const dia=parseInt(e.dia_venc);let prox=new Date(hoje2.getFullYear(),hoje2.getMonth(),dia);if(prox<=hoje2)prox=new Date(hoje2.getFullYear(),hoje2.getMonth()+1,dia);return<div style={{color:T.text2,fontSize:10,marginTop:2}}>Próx: {prox.toLocaleDateString("pt-BR")}</div>;})()}
+                      {e.data_prometida&&<div style={{color:"#8b5cf6",fontSize:11,fontWeight:700,marginTop:2}}>⏳ Prometeu: {fmtDate(e.data_prometida)}</div>}
+                      {editandoPromessa===e.id?(
+                        <div onClick={ev=>ev.stopPropagation()} style={{marginTop:6,display:"flex",gap:6}}>
+                          <input type="date" value={dataPromessa} onChange={ev=>setDataPromessa(ev.target.value)} style={{...inp(T),fontSize:11,padding:"4px 8px",width:130}}/>
+                          <button onClick={ev=>{ev.stopPropagation();salvarPromessa(e.id);}} style={{background:"#8b5cf618",border:"1px solid #8b5cf640",color:"#8b5cf6",borderRadius:6,padding:"4px 8px",cursor:"pointer",fontSize:11,fontWeight:700}}>✓</button>
+                          <button onClick={ev=>{ev.stopPropagation();setEditandoPromessa(null);}} style={{background:T.card2,border:"none",color:T.text2,borderRadius:6,padding:"4px 6px",cursor:"pointer",fontSize:11}}>✕</button>
+                        </div>
+                      ):(
+                        <button onClick={ev=>{ev.stopPropagation();setEditandoPromessa(e.id);setDataPromessa(e.data_prometida||"");}} style={{background:"#8b5cf618",border:"1px solid #8b5cf640",color:"#8b5cf6",borderRadius:6,padding:"3px 8px",cursor:"pointer",fontSize:10,fontWeight:700,marginTop:4}}>⏳ {e.data_prometida?"Editar promessa":"+ Prometeu pagar"}</button>
+                      )}
                       <div style={{display:"flex",gap:4,marginTop:4}}>
                         <button onClick={ev=>{ev.stopPropagation();abrirWhatsCliente(c?.telefone,msgWhatsEmp(e,c,tipo));}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:6,padding:"4px 8px",cursor:"pointer",fontWeight:700,fontSize:11}}>📲</button>
                         <button onClick={ev=>{ev.stopPropagation();excluirOperacao(e.id,e.cliente_id);}} style={{background:"#ef444420",border:"1px solid #ef444440",color:"#ef4444",borderRadius:6,padding:"4px 8px",cursor:"pointer",fontWeight:700,fontSize:11}}>🗑️</button>
