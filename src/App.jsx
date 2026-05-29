@@ -306,10 +306,12 @@ export default function App() {
     try {
       await db.emprestimos.atualizar(empId, {data_prometida: dataPromessa||null});
       pushUndo("promessa", {empId}, "Desfazer promessa");
-      showToast("Data prometida salva!");
+      // Recarrega tudo primeiro
+      const [cs, es, rs] = await Promise.all([db.clientes.listar(), db.emprestimos.listar(), db.rapidos.listar()]);
+      setClientes(cs||[]); setEmprestimos(es||[]); setRapidos(rs||[]);
       setEditandoPromessa(null); setDataPromessa("");
-      await carregar();
-      const es = await db.emprestimos.listar(); setEmprestimos(es||[]);
+      showToast("Data prometida salva!");
+      // Só muda de aba depois de carregar
       setAba("agenda");
     } catch(e){showToast("Erro.","erro");} finally{setSalvando(false);}
   };
