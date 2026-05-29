@@ -576,7 +576,7 @@ export default function App() {
     </div>
   );
 
-  const abas = [["inicio","🏠 Início"],["lista","👥 Clientes"],["vencimentos","📅 Venc."],["cobranca","🔔 Cobranças"],["quitados","✅ Quitados"],["rapidos","⚡ Rápidos"],["relatorio","📊 Relatório"]];
+  const abas = [["inicio","🏠 Início"],["lista","👥 Clientes"],["vencimentos","📅 Venc."],["cobranca","🔔 Cobranças"],["agenda","📆 Agenda"],["quitados","✅ Quitados"],["rapidos","⚡ Rápidos"],["relatorio","📊 Relatório"]];
   const abasMenu = abas.map(a=>a[0]);
 
   // Busca global
@@ -1326,7 +1326,85 @@ export default function App() {
           );
         })()}
 
-        {/* ===== RELATÓRIO ===== */}
+        {/* ===== AGENDA ===== */}
+        {aba==="agenda"&&(
+          <div>
+            <div style={{fontWeight:700,fontSize:15,marginBottom:14}}>📆 Agenda de Pagamentos</div>
+
+            {/* Programados */}
+            {(()=>{
+              const programados = opsAtivas.filter(e=>e.data_prometida).sort((a,b)=>new Date(a.data_prometida)-new Date(b.data_prometida));
+              return(
+                <div style={{marginBottom:20}}>
+                  <div style={{color:"#8b5cf6",fontWeight:700,fontSize:12,textTransform:"uppercase",marginBottom:10,letterSpacing:"0.5px"}}>⏳ Pagamentos Programados ({programados.length})</div>
+                  {programados.length===0
+                    ?<div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:10,padding:16,color:T.text3,textAlign:"center",fontSize:13}}>Nenhum pagamento programado</div>
+                    :<div style={{display:"flex",flexDirection:"column",gap:8}}>
+                      {programados.map(e=>{
+                        const c=getCliente(e.cliente_id);
+                        const hoje2=new Date(); hoje2.setHours(0,0,0,0);
+                        const dProm=new Date(e.data_prometida+"T12:00:00");
+                        const diff=Math.round((dProm-hoje2)/(1000*60*60*24));
+                        const cor=diff<0?"#ef4444":diff===0?"#f59e0b":diff<=3?"#f97316":"#8b5cf6";
+                        const label=diff<0?`Atrasou ${Math.abs(diff)} dia(s)`:diff===0?"Paga hoje":diff===1?"Amanhã":`Em ${diff} dias`;
+                        return(
+                          <div key={e.id} onClick={()=>{setClienteSel(c);setEmpSel(e);setStep(3);setAba("detalhe");}} style={{background:T.card,border:`1px solid ${cor}40`,borderLeft:`4px solid ${cor}`,borderRadius:10,padding:12,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                            <div>
+                              <div style={{fontWeight:700,fontSize:14}}>{c?.nome}</div>
+                              {e.nome_tomador&&<div style={{color:"#f59e0b",fontSize:12,fontWeight:700}}>👤 {e.nome_tomador}</div>}
+                              <div style={{color:T.text2,fontSize:12,marginTop:2}}>Juros: <b style={{color:"#10b981"}}>{fmt(minJuros(e.capital_atual,e.taxa))}</b> · Saldo: <b style={{color:"#ef4444"}}>{fmt(e.capital_atual)}</b></div>
+                            </div>
+                            <div style={{textAlign:"right"}}>
+                              <div style={{fontWeight:800,fontSize:14,color:cor}}>{fmtDate(e.data_prometida)}</div>
+                              <div style={{color:cor,fontSize:11,fontWeight:600}}>{label}</div>
+                              <button onClick={ev=>{ev.stopPropagation();const nm=primeiroNome(c?.nome);const j=fmt(minJuros(e.capital_atual,e.taxa));abrirWhatsCliente(c?.telefone,"Olá "+nm+", tudo bem? Passando para lembrar que você combinou de pagar "+j+" no dia "+fmtDate(e.data_prometida)+". Aguardo confirmação!");}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:6,padding:"3px 8px",cursor:"pointer",fontWeight:700,fontSize:10,marginTop:4}}>📲</button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>}
+                </div>
+              );
+            })()}
+
+            {/* Atrasados sem promessa */}
+            {(()=>{
+              const atrasados = opsAtivas.filter(e=>statusVenc(e.dia_venc,e.historico)==="atrasado"&&!e.data_prometida).sort((a,b)=>diasAtraso(b.dia_venc)-diasAtraso(a.dia_venc));
+              return(
+                <div>
+                  <div style={{color:"#ef4444",fontWeight:700,fontSize:12,textTransform:"uppercase",marginBottom:10,letterSpacing:"0.5px"}}>🔴 Atrasados sem Promessa ({atrasados.length})</div>
+                  {atrasados.length===0
+                    ?<div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:10,padding:16,color:T.text3,textAlign:"center",fontSize:13}}>Nenhum atrasado! 🎉</div>
+                    :<div style={{display:"flex",flexDirection:"column",gap:8}}>
+                      {atrasados.map(e=>{
+                        const c=getCliente(e.cliente_id);
+                        const at=diasAtraso(e.dia_venc);
+                        return(
+                          <div key={e.id} onClick={()=>{setClienteSel(c);setEmpSel(e);setStep(3);setAba("detalhe");}} style={{background:T.card,border:"1px solid #ef444440",borderLeft:"4px solid #ef4444",borderRadius:10,padding:12,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                            <div>
+                              <div style={{fontWeight:700,fontSize:14}}>{c?.nome}</div>
+                              {e.nome_tomador&&<div style={{color:"#f59e0b",fontSize:12,fontWeight:700}}>👤 {e.nome_tomador}</div>}
+                              <div style={{color:T.text2,fontSize:12,marginTop:2}}>Juros: <b style={{color:"#10b981"}}>{fmt(minJuros(e.capital_atual,e.taxa))}</b> · Saldo: <b style={{color:"#ef4444"}}>{fmt(e.capital_atual)}</b></div>
+                            </div>
+                            <div style={{textAlign:"right"}}>
+                              <div style={{fontWeight:800,fontSize:18,color:"#ef4444"}}>{at} dias</div>
+                              <div style={{color:"#ef4444",fontSize:11}}>em atraso</div>
+                              <div style={{display:"flex",gap:4,marginTop:4,justifyContent:"flex-end"}}>
+                                <button onClick={ev=>{ev.stopPropagation();const nm=primeiroNome(c?.nome);const j=fmt(minJuros(e.capital_atual,e.taxa));abrirWhatsCliente(c?.telefone,"Olá "+nm+", tudo bem? Seu pagamento está em atraso há "+at+" dia(s). Valor: "+j+". Podemos acertar?");}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:6,padding:"3px 8px",cursor:"pointer",fontWeight:700,fontSize:10}}>📲</button>
+                                <button onClick={ev=>{ev.stopPropagation();setEditandoPromessa(e.id);setDataPromessa("");setAba("cobranca");}} style={{background:"#8b5cf618",border:"1px solid #8b5cf640",color:"#8b5cf6",borderRadius:6,padding:"3px 8px",cursor:"pointer",fontWeight:700,fontSize:10}}>⏳ Agendar</button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>}
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+        {/* ===== RELATÓRIO ===== */}}
         {aba==="relatorio"&&(()=>{
           const inicio=new Date(relInicio+"T00:00:00"), fim=new Date(relFim+"T23:59:59");
           let totalRec=0,totalJ=0,totalAm=0,totalMul=0,totalQuit=0,valQuit=0,totalEmp=0,qtdEmp=0;
