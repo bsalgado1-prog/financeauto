@@ -1020,22 +1020,71 @@ export default function App() {
               <div style={{fontWeight:700,fontSize:15}}>✅ Quitados ({opsQuitadas.length})</div>
               <button onClick={()=>window.print()} style={{...btnS(T),padding:"7px 12px",fontSize:12}}>🖨️</button>
             </div>
-            {opsQuitadas.length===0?<div style={{textAlign:"center",padding:"60px 0",color:T.text3}}>Nenhuma operação quitada</div>
-            :<div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {sortOps(opsQuitadas,sortQuitados).map(e=>{const c=getCliente(e.cliente_id);return(
-                <div key={e.id} onClick={()=>{setClienteSel(c);setEmpSel(e);setStep(3);setAba("detalhe");}} style={{background:T.card,border:"1px solid #10b98130",borderLeft:"4px solid #10b981",borderRadius:10,padding:12,cursor:"pointer"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
-                    <div><div style={{fontWeight:700,fontSize:14}}>{c?.nome}</div><div style={{color:T.text2,fontSize:12}}>{c?.telefone}</div>{c?.ref1_nome&&<div style={{color:"#f59e0b",fontSize:11}}>📞 {c.ref1_nome}</div>}</div>
-                    <span style={{background:"#10b98118",color:"#10b981",padding:"2px 8px",borderRadius:20,fontSize:11,fontWeight:700}}>✅ Quitado</span>
-                  </div>
-                  <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
-                    <Chip label="Capital" val={fmt(e.capital)} color="#f59e0b" T={T}/>
-                    <Chip label="Pgtos" val={`${e.historico?.length||0}x`} color="#10b981" T={T}/>
-                    <Chip label="Taxa" val={`${e.taxa}%`} color="#8b5cf6" T={T}/>
+          {(()=>{
+              // Separa quitados e abatidos
+              const quitados = opsQuitadas;
+              const abatidos = opsAtivas.filter(e=>(e.historico||[]).some(h=>(h.abateCapital||0)>0));
+              const totalQuit = quitados.reduce((s,e)=>s+e.capital,0);
+              const totalAbat = abatidos.reduce((s,e)=>{const abate=e.historico?.reduce((sa,h)=>sa+(h.abateCapital||0),0)||0;return s+abate;},0);
+              const todasOps = [
+                ...sortOps(quitados,sortQuitados).map(e=>({...e,_tipo:"quitado"})),
+                ...sortOps(abatidos,sortQuitados).map(e=>({...e,_tipo:"abatido"}))
+              ];
+              return(
+                <div>
+                  {todasOps.length===0?<div style={{textAlign:"center",padding:"60px 0",color:T.text3}}>Nenhuma operação</div>
+                  :<div style={{display:"flex",flexDirection:"column",gap:8}}>
+                    {todasOps.map(e=>{
+                      const c=getCliente(e.cliente_id);
+                      const isQuit=e._tipo==="quitado";
+                      const abateTotal=e.historico?.reduce((s,h)=>s+(h.abateCapital||0),0)||0;
+                      return(
+                        <div key={e.id+e._tipo} onClick={()=>{setClienteSel(c);setEmpSel(e);setStep(3);setAba("detalhe");}} style={{background:T.card,border:`1px solid ${isQuit?"#10b98130":"#3b82f630"}`,borderLeft:`4px solid ${isQuit?"#10b981":"#3b82f6"}`,borderRadius:10,padding:12,cursor:"pointer"}}>
+                          <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+                            <div>
+                              <div style={{fontWeight:700,fontSize:14}}>{c?.nome}</div>
+                              {e.nome_tomador&&<div style={{color:"#f59e0b",fontSize:12,fontWeight:700}}>👤 {e.nome_tomador}</div>}
+                              <div style={{color:T.text2,fontSize:12}}>{c?.telefone}</div>
+                              {c?.ref1_nome&&<div style={{color:"#f59e0b",fontSize:11}}>📞 {c.ref1_nome}</div>}
+                            </div>
+                            <span style={{background:isQuit?"#10b98118":"#3b82f618",color:isQuit?"#10b981":"#3b82f6",padding:"2px 8px",borderRadius:20,fontSize:11,fontWeight:700}}>{isQuit?"✅ Quitado":"📉 Abatido"}</span>
+                          </div>
+                          <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
+                            <Chip label="Capital" val={fmt(e.capital)} color="#f59e0b" T={T}/>
+                            {isQuit
+                              ?<Chip label="Pgtos" val={`${e.historico?.length||0}x`} color="#10b981" T={T}/>
+                              :<Chip label="Abatido" val={fmt(abateTotal)} color="#3b82f6" T={T}/>}
+                            <Chip label="Taxa" val={`${e.taxa}%`} color="#8b5cf6" T={T}/>
+                            {!isQuit&&<Chip label="Saldo" val={fmt(e.capital_atual)} color="#ef4444" T={T}/>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>}
+
+                  {/* Totais */}
+                  <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:10,padding:14,marginTop:16}}>
+                    <div style={{fontWeight:700,fontSize:13,marginBottom:12}}>💰 Resumo</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+                      <div style={{background:"#10b98118",borderRadius:8,padding:12}}>
+                        <div style={{color:"#10b981",fontSize:10,fontWeight:700,marginBottom:4}}>✅ QUITADOS</div>
+                        <div style={{fontWeight:800,fontSize:16,color:"#10b981"}}>{fmt(totalQuit)}</div>
+                        <div style={{color:T.text2,fontSize:11}}>{quitados.length} operação(ões)</div>
+                      </div>
+                      <div style={{background:"#3b82f618",borderRadius:8,padding:12}}>
+                        <div style={{color:"#3b82f6",fontSize:10,fontWeight:700,marginBottom:4}}>📉 ABATIMENTOS</div>
+                        <div style={{fontWeight:800,fontSize:16,color:"#3b82f6"}}>{fmt(totalAbat)}</div>
+                        <div style={{color:T.text2,fontSize:11}}>{abatidos.length} operação(ões)</div>
+                      </div>
+                    </div>
+                    <div style={{background:"#f59e0b18",borderRadius:8,padding:12,textAlign:"center"}}>
+                      <div style={{color:"#f59e0b",fontSize:10,fontWeight:700,marginBottom:4}}>💰 TOTAL GERAL</div>
+                      <div style={{fontWeight:800,fontSize:20,color:"#f59e0b"}}>{fmt(totalQuit+totalAbat)}</div>
+                    </div>
                   </div>
                 </div>
-              );})}
-            </div>}
+              );
+            })()}
           </div>
         )}
 
