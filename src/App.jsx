@@ -262,6 +262,7 @@ export default function App() {
       setEditandoPromessa(null); setDataPromessa("");
       await carregar();
       const es = await db.emprestimos.listar(); setEmprestimos(es||[]);
+      setAba("agenda");
     } catch(e){showToast("Erro.","erro");} finally{setSalvando(false);}
   };
 
