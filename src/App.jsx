@@ -637,18 +637,23 @@ export default function App() {
         </div>
       </header>
 
-      {/* ABAS */}
-      {abasMenu.includes(aba)&&(
-        <div style={{display:"flex",borderBottom:`1px solid ${T.border}`,background:T.card,overflowX:"auto"}} className="no-print">
-          {abas.map(([id,label])=>(
-            <button key={id} onClick={()=>setAba(id)} style={{flex:1,minWidth:44,padding:"10px 4px",background:"none",border:"none",borderBottom:aba===id?"2px solid #f59e0b":"2px solid transparent",color:aba===id?"#f59e0b":T.text2,fontWeight:aba===id?700:500,fontSize:13,cursor:"pointer"}}>{label}</button>
-          ))}
-        </div>
-      )}
+
 
       {toast&&<div style={{position:"fixed",top:62,right:14,zIndex:999,background:toast.tipo==="erro"?"#ef4444":"#10b981",color:"#fff",padding:"10px 16px",borderRadius:10,fontWeight:700,fontSize:13}}>{toast.msg}</div>}
 
-      <main style={{maxWidth:820,margin:"0 auto",padding:"14px 12px"}}>
+      <div style={{display:"flex",minHeight:"calc(100vh - 52px)"}}>
+        {/* SIDEBAR */}
+        {abasMenu.includes(aba)&&(
+          <div style={{width:180,minWidth:180,background:T.card,borderRight:`1px solid ${T.border}`,padding:"12px 0",display:"flex",flexDirection:"column",gap:2}} className="no-print">
+            {abas.map(([id,label])=>(
+              <button key={id} onClick={()=>setAba(id)} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 16px",background:aba===id?T.card2:"none",border:"none",borderLeft:aba===id?"3px solid #f59e0b":"3px solid transparent",color:aba===id?"#f59e0b":T.text2,fontWeight:aba===id?700:500,fontSize:13,cursor:"pointer",textAlign:"left",width:"100%"}}>
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <main style={{flex:1,maxWidth:820,margin:"0 auto",padding:"14px 12px",overflowX:"hidden"}}>
 
         {/* ===== INÍCIO ===== */}
         {aba==="inicio"&&(
@@ -1571,7 +1576,8 @@ export default function App() {
             </div>
           );
         })()}
-      </main>
+        </main>
+      </div>
     </div>
   );
 }
