@@ -92,6 +92,8 @@ export default function App() {
   const [loading, setLoading] = useState(true); const [salvando, setSalvando] = useState(false);
   const [busca, setBusca] = useState(""); const [buscaGlobal, setBuscaGlobal] = useState(""); const [mostrarBuscaGlobal, setMostrarBuscaGlobal] = useState(false);
   const [toast, setToast] = useState(null);
+  const [undoStack, setUndoStack] = useState(null);
+  const [undoTimer, setUndoTimer] = useState(null);
   const [metaMensal, setMetaMensal] = useState(()=>parseFloat(localStorage.getItem("fa_meta")||"0"));
   const [editandoMeta, setEditandoMeta] = useState(false); const [novaMeta, setNovaMeta] = useState("");
   const [tema, setTema] = useState(()=>localStorage.getItem("fa_tema")||"escuro");
@@ -137,6 +139,50 @@ export default function App() {
   };
 
   const showToast = (msg, tipo="ok") => { setToast({msg,tipo}); setTimeout(()=>setToast(null),3000); };
+
+  const pushUndo = (tipo, dados, msgUndo) => {
+    if(undoTimer) clearTimeout(undoTimer);
+    setUndoStack({tipo, dados, msg:msgUndo});
+    const t = setTimeout(()=>{ setUndoStack(null); }, 10000);
+    setUndoTimer(t);
+  };
+
+  const executarUndo = async () => {
+    if(!undoStack) return;
+    setSalvando(true);
+    try {
+      const {tipo, dados} = undoStack;
+      if(tipo==="pagamento") {
+        // Remove ultimo pagamento do historico
+        const historico = [...(dados.historico)];
+        historico.pop();
+        let cap = dados.emprestimo.capital;
+        for(let i=0;i<historico.length;i++){const h=historico[i],j=minJuros(cap,dados.emprestimo.taxa),a=Math.max(0,h.valorPago-j);cap=Math.max(0,cap-a);historico[i]={...h,capitalAntes:cap+a,juros:j,abateCapital:a,capitalDepois:cap};}
+        await db.emprestimos.atualizar(dados.emprestimo.id, {capital_atual:cap, historico});
+        showToast("Pagamento desfeito!");
+      } else if(tipo==="promessa") {
+        await db.emprestimos.atualizar(dados.empId, {data_prometida: null});
+        showToast("Promessa removida!");
+      } else if(tipo==="cliente") {
+        await db.clientes.excluir(dados.clienteId);
+        showToast("Cliente removido!");
+      } else if(tipo==="operacao") {
+        await api("DELETE", `/emprestimos?id=eq.${dados.empId}`);
+        showToast("Operação removida!");
+      } else if(tipo==="rapido") {
+        // Remove ultimo pagamento do rapido
+        const historico = [...(dados.historico)];
+        historico.pop();
+        const novoCapital = historico.length > 0 ? historico[historico.length-1].capitalDepois : dados.capitalOriginal;
+        await db.rapidos.atualizar(dados.rapidoId, {capital_atual: novoCapital, historico});
+        showToast("Pagamento desfeito!");
+      }
+      setUndoStack(null);
+      await carregar();
+      const es = await db.emprestimos.listar(); setEmprestimos(es||[]);
+    } catch(e){showToast("Erro ao desfazer.","erro");}
+    finally{setSalvando(false);}
+  };
 
   const carregar = async () => {
     try { setLoading(true); const [cs,es,rs]=await Promise.all([db.clientes.listar(),db.emprestimos.listar(),db.rapidos.listar()]); setClientes(cs||[]); setEmprestimos(es||[]); setRapidos(rs||[]); }
@@ -195,7 +241,8 @@ export default function App() {
       const capital=parseFloat(ef.capital);
       const isAntigo=(ef.cliente_tipo||"novo")==="antigo";
       const saldoAtual=isAntigo&&ef.saldo_atual?parseFloat(ef.saldo_atual):capital;
-      await db.emprestimos.criar({cliente_id:clienteSel.id,capital,taxa:parseFloat(ef.taxa),tipo:ef.tipo,num_parcelas:parseInt(ef.num_parcelas)||1,data_op:ef.data_op,dia_venc:ef.dia_venc,obs:ef.obs,capital_atual:saldoAtual,historico:[],frequencia_pag:ef.frequencia_pag||"mensal",nome_tomador:ef.nome_tomador||""});
+      const resE = await db.emprestimos.criar({cliente_id:clienteSel.id,capital,taxa:parseFloat(ef.taxa),tipo:ef.tipo,num_parcelas:parseInt(ef.num_parcelas)||1,data_op:ef.data_op,dia_venc:ef.dia_venc,obs:ef.obs,capital_atual:saldoAtual,historico:[],frequencia_pag:ef.frequencia_pag||"mensal",nome_tomador:ef.nome_tomador||""});
+      if(resE&&resE[0]) pushUndo("operacao", {empId:resE[0].id}, "Desfazer operação");
       setEf(emptyE); setModoForm(null); showToast("Operação cadastrada!"); await carregar(); setStep(2);
     } catch(e){showToast("Erro.","erro");} finally{setSalvando(false);}
   };
@@ -212,12 +259,12 @@ export default function App() {
       for(let i=0;i<historico.length;i++){const h=historico[i],j=minJuros(cap,empSel.taxa),a=Math.max(0,h.valorPago-j);cap=Math.max(0,cap-a);historico[i]={...h,capitalAntes:cap+a,juros:j,abateCapital:a,capitalDepois:cap};}
       await db.emprestimos.atualizar(empSel.id,{capital_atual:cap,historico});
       setNovoPag({valor:"",data:today(),obs:"",multa:""}); setEditandoPag(null);
+      if(editandoPag===null) pushUndo("pagamento", {emprestimo:empSel, historico:[...(empSel.historico||[])]}, "Desfazer pagamento");
       showToast(editandoPag!==null?"Editado!":"Pagamento registrado!");
       await carregar();
       const es=await db.emprestimos.listar(); setEmprestimos(es||[]);
       const empAtualizado=es.find(x=>x.id===empSel.id)||null;
       setEmpSel(empAtualizado);
-      // Se quitou ou pagou, mostra botão voltar para cobrança
       if(editandoPag===null) setMostrarVoltarCobranca(true);
     } catch(e){showToast("Erro.","erro");} finally{setSalvando(false);}
   };
@@ -258,6 +305,7 @@ export default function App() {
     setSalvando(true);
     try {
       await db.emprestimos.atualizar(empId, {data_prometida: dataPromessa||null});
+      pushUndo("promessa", {empId}, "Desfazer promessa");
       showToast("Data prometida salva!");
       setEditandoPromessa(null); setDataPromessa("");
       await carregar();
@@ -641,6 +689,11 @@ export default function App() {
 
 
       {toast&&<div style={{position:"fixed",top:62,right:14,zIndex:999,background:toast.tipo==="erro"?"#ef4444":"#10b981",color:"#fff",padding:"10px 16px",borderRadius:10,fontWeight:700,fontSize:13}}>{toast.msg}</div>}
+      {undoStack&&<div style={{position:"fixed",bottom:20,left:"50%",transform:"translateX(-50%)",zIndex:999,background:"#1a1a2e",border:"1px solid #f59e0b",color:"#e2eaf8",padding:"10px 16px",borderRadius:12,fontWeight:600,fontSize:13,display:"flex",alignItems:"center",gap:10,boxShadow:"0 4px 20px rgba(0,0,0,0.4)"}}>
+        <span>{undoStack.msg}</span>
+        <button onClick={executarUndo} style={{background:"#f59e0b",color:"#000",border:"none",borderRadius:8,padding:"5px 12px",fontWeight:800,fontSize:13,cursor:"pointer"}}>↩️ Desfazer</button>
+        <button onClick={()=>setUndoStack(null)} style={{background:"none",border:"none",color:"#64748b",cursor:"pointer",fontSize:16}}>✕</button>
+      </div>}
 
       <div style={{display:"flex",minHeight:"calc(100vh - 52px)"}}>
         {/* SIDEBAR */}
