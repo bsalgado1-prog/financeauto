@@ -161,7 +161,7 @@ export default function App() {
   // Listas
   const opsAtivas = emprestimos.filter(e=>e.capital_atual>0);
   const opsQuitadas = emprestimos.filter(e=>e.capital_atual<=0);
-  const opsAlerta = opsAtivas.filter(e=>["hoje","atrasado","proximo"].includes(statusVenc(e.dia_venc,e.historico))).sort((a,b)=>{const o={atrasado:0,hoje:1,proximo:2};return(o[statusVenc(a.dia_venc,a.historico)]||3)-(o[statusVenc(b.dia_venc,b.historico)]||3);});
+  const opsAlerta = opsAtivas.filter(e=>["hoje","atrasado","proximo"].includes(statusVenc(e.dia_venc,e.historico))&&!e.data_prometida).sort((a,b)=>{const o={atrasado:0,hoje:1,proximo:2};return(o[statusVenc(a.dia_venc,a.historico)]||3)-(o[statusVenc(b.dia_venc,b.historico)]||3);});
   const opsVenc = [...opsAtivas].sort((a,b)=>(Number(a.dia_venc)||99)-(Number(b.dia_venc)||99));
 
   // Dados início
