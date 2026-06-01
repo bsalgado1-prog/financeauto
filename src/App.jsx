@@ -133,11 +133,7 @@ export default function App() {
   const [mostrarContatos, setMostrarContatos] = useState(false);
   const [mostrarAnotacoes, setMostrarAnotacoes] = useState(false);
 
-  const T = tema==="claro" ? {
-    bg:"#f0f4ff", card:"#ffffff", card2:"#e8f0fe", border:"#c0d0f0", text:"#1a2a4a", text2:"#4a6080", text3:"#7a90b0", header:"#1a56db", inp:"#f8fbff", btn:"#dce8fd", btnText:"#1a2a4a"
-  } : {
-    bg:"#0a1628", card:"#0f2044", card2:"#162d5e", border:"#1e3a6e", text:"#e2eaf8", text2:"#7a9cc8", text3:"#3a5a8a", header:"#0d1b2a", inp:"#0d1e40", btn:"#1f2b47", btnText:"#e2eaf8"
-  };
+  const T = tema==="claro" ? {bg:"#f0f4ff",card:"#ffffff",card2:"#e8f0fe",border:"#c0d0f0",text:"#1a2a4a",text2:"#4a6080",text3:"#7a90b0",header:"#1a56db",inp:"#f8fbff",btn:"#dce8fd",btnText:"#1a2a4a"} : {bg:"#0a1628",card:"#0f2044",card2:"#162d5e",border:"#1e3a6e",text:"#e2eaf8",text2:"#7a9cc8",text3:"#3a5a8a",header:"#0d1b2a",inp:"#0d1e40",btn:"#1f2b47",btnText:"#e2eaf8"};
 
   const showToast = (msg, tipo="ok") => { setToast({msg,tipo}); setTimeout(()=>setToast(null),3000); };
 
@@ -693,7 +689,7 @@ export default function App() {
   );
 
   return (
-    <div style={{minHeight:"100vh",background:T.bg,color:T.text,fontFamily:"'DM Sans',sans-serif"}}>
+    <div style={{minHeight:"100vh",background:T.bg,color:T.text,fontFamily:"DM Sans,sans-serif"}}>
       {/* HEADER */}
       <header style={{background:T.header,borderBottom:`1px solid ${T.border}`,padding:"0 12px",display:"flex",alignItems:"center",justifyContent:"space-between",height:52,position:"sticky",top:0,zIndex:100}} className="no-print">
         <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -753,8 +749,9 @@ export default function App() {
         {/* ===== INÍCIO ===== */}
         {aba==="inicio"&&(
           <div>
-            <div style={{fontWeight:800,fontSize:18,marginBottom:16}}>Bom dia! 👋</div>
-
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+              <div style={{fontWeight:800,fontSize:18}}>Bom dia! 👋</div>
+              <button onClick={()=>{const hoje2=new Date();const atrasados=opsAlerta.filter(e=>statusVenc(e.dia_venc,e.historico)==="atrasado").length;const venceHoje=opsAlerta.filter(e=>statusVenc(e.dia_venc,e.historico)==="hoje").length;const saldoTotal2=opsAtivas.reduce((s,e)=>s+e.capital_atual,0);const jurosTotal=opsAtivas.reduce((s,e)=>s+minJuros(e.capital_atual,e.taxa),0);const msg="Resumo do Dia - "+hoje2.toLocaleDateString("pt-BR")+"\n\nAtrasados: "+atrasados+"\nVencem hoje: "+venceHoje+"\nSaldo em aberto: "+fmt(saldoTotal2)+"\nJuros/mes: "+fmt(jurosTotal)+"\nMeta: "+fmt(metaMensal)+" ("+Math.round(metaMensal>0?(jurosMes()/metaMensal)*100:0)+"%)";abrirWhats(msg);}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:8,padding:"7px 12px",cursor:"pointer",fontWeight:700,fontSize:12}}>📲 Resumo</button>
             {/* Cards resumo */}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
               {[
@@ -915,6 +912,7 @@ export default function App() {
               <input placeholder="🔍 Nome ou CPF..." value={busca} onChange={e=>setBusca(e.target.value)} style={{...inp(T),flex:1}}/>
               <button onClick={carregar} style={{...btnS(T),padding:"8px 12px"}}>↻</button>
               <button onClick={()=>window.print()} style={{...btnS(T),padding:"8px 12px"}}>🖨️</button>
+              <button onClick={()=>{const lista=clientes.map(c=>{const s=saldoTotal(c.id);return"• "+c.nome+(s>0?" - "+fmt(s):"");}).join("\n");const msg="Clientes ("+clientes.length+")\n\n"+lista;abrirWhats(msg);}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:6,padding:"8px 10px",cursor:"pointer",fontWeight:700,fontSize:12}}>📲</button>
               <span style={{color:T.text3,fontSize:12}}>{clientes.length}</span>
             </div>
             <SortBar value={sortClientes} onChange={setSortClientes} options={[["az","A-Z"],["za","Z-A"],["saldo_desc","Maior saldo"],["juros_desc","Maior juros"]]} T={T}/>
@@ -963,7 +961,10 @@ export default function App() {
           <div>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
               <div style={{fontWeight:700,fontSize:15}}>📅 Por Vencimento</div>
-              <button onClick={()=>window.print()} style={{...btnS(T),padding:"7px 12px",fontSize:12}}>🖨️</button>
+              <div style={{display:"flex",gap:6}}>
+                <button onClick={()=>{const lista=sortOps(opsVenc,"dia").map(e=>{const c=getCliente(e.cliente_id);return"• Dia "+e.dia_venc+" - "+(e.nome_tomador||c?.nome)+" - "+fmt(minJuros(e.capital_atual,e.taxa));}).join("\n");abrirWhats("Vencimentos:\n\n"+lista);}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:6,padding:"7px 10px",cursor:"pointer",fontWeight:700,fontSize:12}}>📲</button>
+                <button onClick={()=>window.print()} style={{...btnS(T),padding:"7px 12px",fontSize:12}}>🖨️</button>
+              </div>
             </div>
             {sortOps(opsVenc,"dia").length===0?<div style={{textAlign:"center",padding:"60px 0",color:T.text3}}>Nenhuma operação ativa</div>
             :<div style={{display:"flex",flexDirection:"column",gap:8}}>
@@ -1132,7 +1133,10 @@ export default function App() {
           <div>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
               <div style={{fontWeight:700,fontSize:15}}>⚡ Diário / Semanal</div>
-              <button onClick={()=>setMostrarFormR(!mostrarFormR)} style={{...btnP}}>+ Novo</button>
+              <div style={{display:"flex",gap:6}}>
+                <button onClick={()=>{const ativos2=rapidos.filter(r=>r.capital_atual>0);const msg="Rapidos ("+ativos2.length+")\n\n"+ativos2.map(r=>"• "+r.nome+" - Saldo: "+fmt(r.capital_atual)+" - Parcela: "+fmt(r.valor_parcela)).join("\n")+"\n\nTotal: "+fmt(ativos2.reduce((s,r)=>s+r.capital_atual,0));abrirWhats(msg);}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:6,padding:"7px 10px",cursor:"pointer",fontWeight:700,fontSize:12}}>📲</button>
+                <button onClick={()=>setMostrarFormR(!mostrarFormR)} style={{...btnP}}>+ Novo</button>
+              </div>
             </div>
             {mostrarFormR&&(
               <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,padding:16,marginBottom:16}}>
@@ -1479,7 +1483,10 @@ export default function App() {
         {/* ===== AGENDA ===== */}
         {aba==="agenda"&&(
           <div>
-            <div style={{fontWeight:700,fontSize:15,marginBottom:14}}>📆 Agenda de Pagamentos</div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <div style={{fontWeight:700,fontSize:15}}>📆 Agenda de Pagamentos</div>
+              <button onClick={()=>{const prog=opsAtivas.filter(e=>e.data_prometida);const atras=opsAtivas.filter(e=>statusVenc(e.dia_venc,e.historico)==="atrasado"&&!e.data_prometida);let msg="Agenda\n\n";if(prog.length>0){msg+="Programados ("+prog.length+"):\n"+prog.map(e=>"• "+(e.nome_tomador||getCliente(e.cliente_id)?.nome)+" - "+fmtDate(e.data_prometida)+" - "+fmt(minJuros(e.capital_atual,e.taxa))).join("\n")+"\n\n";}if(atras.length>0){msg+="Atrasados ("+atras.length+"):\n"+atras.map(e=>"• "+(e.nome_tomador||getCliente(e.cliente_id)?.nome)+" - "+diasAtraso(e.dia_venc)+" dias").join("\n");}abrirWhats(msg);}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:8,padding:"7px 12px",cursor:"pointer",fontWeight:700,fontSize:12}}>📲 Resumo</button>
+            </div>
 
             {/* Programados */}
             {(()=>{
@@ -1554,7 +1561,7 @@ export default function App() {
           </div>
         )}
 
-        {/* ===== RELATÓRIO ===== */}}
+        {/* ===== RELATÓRIO ===== */}
         {aba==="relatorio"&&(()=>{
           const inicio=new Date(relInicio+"T00:00:00"), fim=new Date(relFim+"T23:59:59");
           let totalRec=0,totalJ=0,totalAm=0,totalMul=0,totalQuit=0,valQuit=0,totalEmp=0,qtdEmp=0;
@@ -1566,7 +1573,10 @@ export default function App() {
           const pctMeta=metaMensal>0?Math.round((totalJ/metaMensal)*100):0;
           return(
             <div>
-              <div style={{fontWeight:700,fontSize:15,marginBottom:14}}>📊 Relatório Financeiro</div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                <div style={{fontWeight:700,fontSize:15}}>📊 Relatório Financeiro</div>
+                <button onClick={()=>{const inicio2=new Date(relInicio+"T00:00:00"),fim2=new Date(relFim+"T23:59:59");let tRec=0,tJ=0,tAm=0,tMul=0;emprestimos.forEach(e=>{(e.historico||[]).forEach(h=>{if(!h.data)return;const d=new Date(h.data+"T12:00:00");if(d>=inicio2&&d<=fim2){tRec+=h.valorPago||0;tJ+=h.juros||0;tAm+=h.abateCapital||0;tMul+=h.multa||0;}});});const msg="📊 Relatório "+fmtDate(relInicio)+" a "+fmtDate(relFim)+"\n\nRecebido: "+fmt(tRec)+"\nJuros: "+fmt(tJ)+"\nAmortização: "+fmt(tAm)+"\nMultas: "+fmt(tMul)+"\nSaldo em aberto: "+fmt(opsAtivas.reduce((s,e)=>s+e.capital_atual,0));abrirWhats(msg);}} style={{background:"#25D36618",border:"1px solid #25D36640",color:"#25D366",borderRadius:8,padding:"7px 12px",cursor:"pointer",fontWeight:700,fontSize:12}}>📲 Resumo</button>
+              </div>
               <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:10,padding:14,marginBottom:16}}>
                 <div style={{display:"flex",gap:8,marginBottom:10}}>
                   {[["mes","Mês Atual"],["periodo","Por Período"]].map(([v,t])=>(<button key={v} onClick={()=>{setRelPeriodo(v);if(v==="mes"){const h=new Date();setRelInicio(new Date(h.getFullYear(),h.getMonth(),1).toISOString().split("T")[0]);setRelFim(h.toISOString().split("T")[0]);}}} style={{flex:1,padding:"8px 0",background:relPeriodo===v?"linear-gradient(135deg,#f59e0b,#ef4444)":T.btn,color:relPeriodo===v?"#fff":T.text2,border:"none",borderRadius:8,fontWeight:700,fontSize:13,cursor:"pointer"}}>{t}</button>))}
@@ -1723,7 +1733,6 @@ export default function App() {
         })()}
         </main>
       </div>
-    </div>
   );
 }
 
