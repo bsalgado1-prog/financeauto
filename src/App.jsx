@@ -101,6 +101,7 @@ export default function App() {
   const [clienteSel, setClienteSel] = useState(null); const [step, setStep] = useState(1);
   const [cf, setCf] = useState(emptyC); const [ef, setEf] = useState(emptyE);
   const [modoForm, setModoForm] = useState(null);
+  const [editandoEmp, setEditandoEmp] = useState(null);
   const [editandoCliente, setEditandoCliente] = useState(null);
   // Emprestimos detalhe
   const [empSel, setEmpSel] = useState(null);
@@ -236,6 +237,7 @@ export default function App() {
   const salvarEmprestimo = async () => {
     if(!ef.capital||!ef.taxa){showToast("Preencha capital e taxa.","erro");return;}
     if(!ef.dia_venc){showToast("Informe o dia de vencimento.","erro");return;}
+    if(editandoEmp){await salvarEdicaoEmp();return;}
     setSalvando(true);
     try {
       const capital=parseFloat(ef.capital);
@@ -506,6 +508,43 @@ export default function App() {
   };
 
   // Export para Excel/CSV
+  const editarOperacao = (e) => {
+    setEf({
+      capital: String(e.capital),
+      taxa: String(e.taxa),
+      tipo: e.tipo,
+      num_parcelas: String(e.num_parcelas||1),
+      data_op: e.data_op||today(),
+      dia_venc: String(e.dia_venc||""),
+      obs: e.obs||"",
+      cliente_tipo: e.cliente_tipo||"antigo",
+      saldo_atual: String(e.capital_atual),
+      frequencia_pag: e.frequencia_pag||"mensal",
+      nome_tomador: e.nome_tomador||""
+    });
+    setEditandoEmp(e);
+    setModoForm("emprestimo");
+  };
+
+  const salvarEdicaoEmp = async () => {
+    if(!ef.capital||!ef.taxa){showToast("Preencha capital e taxa.","erro");return;}
+    if(!ef.dia_venc){showToast("Informe o dia de vencimento.","erro");return;}
+    setSalvando(true);
+    try {
+      const capital = parseFloat(ef.capital);
+      const saldoAtual = ef.saldo_atual ? parseFloat(ef.saldo_atual) : capital;
+      await db.emprestimos.atualizar(editandoEmp.id, {
+        capital, taxa:parseFloat(ef.taxa), tipo:ef.tipo,
+        num_parcelas:parseInt(ef.num_parcelas)||1,
+        data_op:ef.data_op, dia_venc:ef.dia_venc, obs:ef.obs,
+        capital_atual:saldoAtual, frequencia_pag:ef.frequencia_pag||"mensal",
+        nome_tomador:ef.nome_tomador||""
+      });
+      setEf(emptyE); setModoForm(null); setEditandoEmp(null);
+      showToast("Operação atualizada!"); await carregar(); setStep(2);
+    } catch(e){showToast("Erro.","erro");} finally{setSalvando(false);}
+  };
+
   const excluirOperacao = async (empId, clienteId) => {
     if(!window.confirm("Excluir esta operação?")) return;
     setSalvando(true);
@@ -1222,8 +1261,9 @@ export default function App() {
                     <Chip label="Capital" val={fmt(e.capital)} color="#f59e0b" T={T}/><Chip label="Saldo" val={fmt(e.capital_atual)} color={quitado?"#10b981":"#ef4444"} T={T}/><Chip label="Taxa" val={`${e.taxa}%`} color="#8b5cf6" T={T}/><Chip label="Mínimo" val={quitado?"—":fmt(minJuros(e.capital_atual,e.taxa))} color="#3b82f6" T={T}/>
                   </div>
                   <div style={{background:T.card2,borderRadius:4,height:4,overflow:"hidden"}}><div style={{height:"100%",width:`${Math.min(100,pct)}%`,background:quitado?"#10b981":"linear-gradient(90deg,#f59e0b,#ef4444)",borderRadius:4}}/></div>
-                  <div style={{display:"flex",justifyContent:"flex-end",marginTop:8}}>
-                    <button onClick={ev=>{ev.stopPropagation();excluirOperacao(e.id,e.cliente_id);}} style={{background:"#ef444420",border:"1px solid #ef444440",color:"#ef4444",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontWeight:700,fontSize:11}}>🗑️ Excluir operação</button>
+                  <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:8}}>
+                    <button onClick={ev=>{ev.stopPropagation();editarOperacao(e);}} style={{background:"#f59e0b20",border:"1px solid #f59e0b40",color:"#f59e0b",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontWeight:700,fontSize:11}}>✏️ Editar</button>
+                    <button onClick={ev=>{ev.stopPropagation();excluirOperacao(e.id,e.cliente_id);}} style={{background:"#ef444420",border:"1px solid #ef444440",color:"#ef4444",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontWeight:700,fontSize:11}}>🗑️ Excluir</button>
                   </div>
                 </div>);
               })}
@@ -1287,7 +1327,7 @@ export default function App() {
 
             {modoForm==="emprestimo"&&(
               <div style={{background:T.card,border:"1px solid #f59e0b40",borderRadius:12,padding:16,marginTop:14}}>
-                <div style={{fontWeight:700,marginBottom:14,fontSize:14}}>💰 Nova Operação</div>
+                <div style={{fontWeight:700,marginBottom:14,fontSize:14}}>{editandoEmp?"✏️ Editar Operação":"💰 Nova Operação"}</div>
                 <div style={{marginBottom:10}}><label style={lbl(T)}>Nome do Tomador</label><input name="nome_tomador" value={ef.nome_tomador} onChange={e=>setEf(f=>({...f,[e.target.name]:e.target.value}))} style={inp(T)} placeholder="Ex: ANGELA, ADRIANO..."/></div>
                 <Grid2>
                   <F label="Capital (R$) *" name="capital" type="number" value={ef.capital} onChange={e=>setEf(f=>({...f,[e.target.name]:e.target.value}))} ph="0,00" T={T}/>
@@ -1310,7 +1350,7 @@ export default function App() {
                   <F label="Saldo devedor atual (R$) *" name="saldo_atual" type="number" value={ef.saldo_atual} onChange={e=>setEf(f=>({...f,[e.target.name]:e.target.value}))} ph="Quanto o cliente ainda deve hoje" T={T}/>
                 </div>)}
                 <div style={{marginBottom:10}}><label style={lbl(T)}>Obs</label><textarea name="obs" value={ef.obs} onChange={e=>setEf(f=>({...f,[e.target.name]:e.target.value}))} style={{...inp(T),height:50,resize:"vertical"}}/></div>
-                <div style={{display:"flex",gap:8}}><button onClick={()=>setModoForm(null)} style={{...btnS(T)}}>Cancelar</button><button onClick={salvarEmprestimo} disabled={salvando} style={{...btnP,opacity:salvando?0.6:1}}>{salvando?"Salvando...":"✅ Salvar"}</button></div>
+                <div style={{display:"flex",gap:8}}><button onClick={()=>{setModoForm(null);setEditandoEmp(null);setEf(emptyE);}} style={{...btnS(T)}}>Cancelar</button><button onClick={salvarEmprestimo} disabled={salvando} style={{...btnP,opacity:salvando?0.6:1}}>{salvando?"Salvando...":"✅ Salvar"}</button></div>
               </div>
             )}
           </div>
